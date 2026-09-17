@@ -107,7 +107,7 @@ export default function PokemonView({ onRegresar }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 font-sans selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 font-sans selection:bg-blue-600 selection:text-white">
       {/* Pokédex Outer Housing */}
       <div className="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
         
