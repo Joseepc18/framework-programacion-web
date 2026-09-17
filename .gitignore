@@ -23,5 +23,3 @@ pnpm-debug.log*
 Thumbs.db
 
 tareas/
-# Uso local, no subir
-CLAUDE.md
