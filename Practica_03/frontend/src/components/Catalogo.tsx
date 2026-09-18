@@ -1,15 +1,23 @@
 // src/components/Catalogo.tsx
 import { useCart } from '../context/CartContext';
+import { useState, useEffect } from 'react';
 
+interface Producto {
+  id: number;
+  nombre: string;
+  precio: number;
+  img: string;
+}
 const Catalogo = () => {
   const { addToCart } = useCart(); // <-- Usamos la función del contexto
+  const [productos, setProductos] = useState<Producto[]>([]);
 
-  const productos = [
-    { id: 1, nombre: "Serum Revitalizante", precio: 45.00, img: "https://picsum.photos/seed/serum/600/400" },
-    { id: 2, nombre: "Crema Hidratante Pro", precio: 32.50, img: "https://picsum.photos/seed/crema/600/400" },
-    { id: 3, nombre: "Tónico Purificante", precio: 28.00, img: "https://picsum.photos/seed/tonico/600/400" },
-    { id: 4, nombre: "Mascarilla Nocturna", precio: 50.00, img: "https://picsum.photos/seed/mascarilla/600/400" },
-  ];
+  useEffect(() => {
+    fetch('http://localhost:3000/api/productos')
+      .then(res => res.json())
+      .then(data => setProductos(data))
+      .catch(err => console.error(err));
+  }, []);
 
   return (
     <div>

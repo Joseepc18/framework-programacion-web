@@ -11,16 +11,27 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    // Simulación de validación hardcodeada (A futuro se reemplazará por llamada a API)
-    if (email === 'admin@upse.edu.ec' && password === '123456') {
-      setError('');
-      login(email); // Cambiamos el estado global a autenticado
-      navigate('/'); // Redirigimos al Dashboard
-    } else {
-      setError('Credenciales incorrectas. Usa admin@upse.edu.ec / 123456');
+
+    try {
+      const res = await fetch('http://localhost:3000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ email, password }),         
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setError('');
+        login(data.email); 
+        navigate('/');
+      } else {
+        setError('Credenciales incorrectas.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('No se pudo conectar con el servidor.');
     }
   };
 
