@@ -1,10 +1,19 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
+// 1. Tipos de rol que maneja la aplicación
+export type Rol = 'admin' | 'cliente';
+
+// 2. Usuario autenticado: correo + rol (lo entrega la API en /api/login)
+export interface Usuario {
+  email: string;
+  rol: Rol;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  userEmail: string | null; // <-- 1. Nuevo estado para el correo
-  login: (email: string) => void; // <-- 2. La función ahora recibe el correo
+  user: Usuario | null;
+  login: (usuario: Usuario) => void;
   logout: () => void;
 }
 
@@ -24,21 +33,20 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null); // <-- 3. Estado local
+  const [user, setUser] = useState<Usuario | null>(null);
 
-  // 4. Actualizamos las funciones
-  const login = (email: string) => {
+  const login = (usuario: Usuario) => {
     setIsAuthenticated(true);
-    setUserEmail(email); // Guardamos el correo
+    setUser(usuario);
   };
-  
+
   const logout = () => {
     setIsAuthenticated(false);
-    setUserEmail(null); // Limpiamos el correo al salir
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userEmail, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
