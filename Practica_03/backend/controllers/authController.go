@@ -12,7 +12,7 @@ import (
 func Login(c *fiber.Ctx) error {
 	// Creamos una variable 'req' del tipo LoginRequest (ubicada en nuestro paquete models) para almacenar los datos.
 	var req models.LoginRequest
-	
+
 	// Intentamos parsear (transformar) el cuerpo JSON entrante y guardarlo en la variable 'req'.
 	if err := c.BodyParser(&req); err != nil {
 		// Si ocurre un error al parsear (ej. JSON mal formado), retornamos un estado HTTP 400 (Bad Request).
@@ -20,11 +20,16 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// Evaluamos si el email y la contraseña coinciden con las credenciales predefinidas.
-	if req.Email == "admin@upse.edu.ec" && req.Password == "123456" {
-		// Si coinciden, retornamos un estado HTTP 200 (por defecto) enviando un JSON con un token ficticio y el correo.
-		return c.JSON(fiber.Map{"token": "fake-jwt-token-123", "email": req.Email})
+	// Nota: al estar hardcodeado, distinguimos dos roles: admin y cliente.
+	switch {
+	case req.Email == "admin@upse.edu.ec" && req.Password == "123456":
+		// Si es el administrador, retornamos un estado HTTP 200 (por defecto) con token ficticio, correo y rol admin.
+		return c.JSON(fiber.Map{"token": "fake-jwt-token-123", "email": req.Email, "rol": "admin"})
+	case req.Email == "cliente@upse.edu.ec" && req.Password == "123456":
+		// Si es un cliente registrado, retornamos un estado HTTP 200 con token ficticio, correo y rol cliente.
+		return c.JSON(fiber.Map{"token": "fake-jwt-token-456", "email": req.Email, "rol": "cliente"})
+	default:
+		// Si las credenciales son incorrectas, retornamos un estado HTTP 401 (No autorizado) con un mensaje de error.
+		return c.Status(401).JSON(fiber.Map{"error": "Credenciales incorrectas"})
 	}
-	
-	// Si las credenciales son incorrectas, retornamos un estado HTTP 401 (No autorizado) con un mensaje de error.
-	return c.Status(401).JSON(fiber.Map{"error": "Credenciales incorrectas"})
 }
