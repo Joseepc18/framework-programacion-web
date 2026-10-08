@@ -11,26 +11,32 @@ type LoginRequest struct {
 
 // Usuario define los datos de una cuenta registrada en el sistema.
 type Usuario struct {
+	// ID es el identificador único del usuario en la base de datos.
+	ID int `json:"id"`
 	// Email es el correo con el que el usuario inicia sesión.
 	Email string `json:"email"`
 	// Password es la contraseña del usuario; el guion en la etiqueta evita que se envíe en las respuestas JSON.
 	Password string `json:"-"`
 	// Rol indica los permisos del usuario dentro del sistema (admin o cliente).
 	Rol string `json:"rol"`
-	// Token es el token ficticio que se entrega al iniciar sesión correctamente.
-	Token string `json:"token"`
 }
 
 // Producto define la estructura de los datos de un artículo en nuestro catálogo.
 type Producto struct {
 	// ID es el identificador único numérico del producto.
 	ID int `json:"id"`
-	// Nombre es la descripción en texto del producto.
+	// Nombre es el nombre comercial del producto.
 	Nombre string `json:"nombre"`
+	// Descripcion es el texto descriptivo que se muestra en el detalle del producto.
+	Descripcion string `json:"descripcion"`
 	// Precio es el costo del producto, almacenado como un número con decimales (float64).
 	Precio float64 `json:"precio"`
+	// Categoria agrupa los productos para los filtros del catálogo (Serum, Crema, ...).
+	Categoria string `json:"categoria"`
 	// Img es la URL o ruta que apunta a la fotografía o imagen del producto.
 	Img string `json:"img"`
+	// Galeria contiene las URLs de las imágenes adicionales del producto.
+	Galeria []string `json:"galeria"`
 }
 
 // Referido define un nodo del árbol de la red multinivel.
