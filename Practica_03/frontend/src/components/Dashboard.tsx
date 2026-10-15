@@ -1,13 +1,56 @@
 // src/components/Dashboard.tsx
-// Resumen general con KPIs calculados desde el estado real (Tema 5):
-// - Funciones puras de data/red.ts en lugar de valores estáticos
-import { redInicial, contarRed, sumarVentasRed, sumarComisiones, nivelAlcanzado, comisionDeReferido } from '../data/red';
+// Resumen general con KPIs calculados desde los datos reales de la red:
+// - La red se consulta al backend (GET /api/red) y se resume con funciones puras de data/red.ts
+import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { getRed } from '../services/redService';
+import {
+  contarRed,
+  sumarVentasRed,
+  sumarComisiones,
+  nivelAlcanzado,
+  comisionDeReferido,
+  type Referido,
+} from '../data/red';
 
 const Dashboard = () => {
-  const referidosDirectos = redInicial.hijos?.length ?? 0;
-  const referidosActivos = contarRed(redInicial);
-  const ventasRed = sumarVentasRed(redInicial);
-  const comisionesMes = sumarComisiones(redInicial);
+  const { user } = useAuth();
+  const [red, setRed] = useState<Referido | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pedimos la red al backend: cada usuario tiene su propia clave de caché (red:tree:{email}).
+  useEffect(() => {
+    let activo = true;
+
+    getRed(user?.email)
+      .then((datos) => {
+        if (activo) setRed(datos);
+      })
+      .catch((e: Error) => {
+        if (activo) setError(e.message);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [user?.email]);
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-lg">
+        {error}
+      </div>
+    );
+  }
+
+  if (!red) {
+    return <p className="text-slate-500">Cargando red multinivel…</p>;
+  }
+
+  const referidosDirectos = red.hijos?.length ?? 0;
+  const referidosActivos = contarRed(red);
+  const ventasRed = sumarVentasRed(red);
+  const comisionesMes = sumarComisiones(red);
   const nivel = nivelAlcanzado(referidosDirectos);
 
   const kpis = [
@@ -18,7 +61,7 @@ const Dashboard = () => {
   ];
 
   // Top 3 referidos por ventas (sin recursión: solo nivel 1)
-  const topReferidos = [...(redInicial.hijos ?? [])]
+  const topReferidos = [...(red.hijos ?? [])]
     .sort((a, b) => b.ventas - a.ventas)
     .slice(0, 3);
 
@@ -26,7 +69,7 @@ const Dashboard = () => {
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Resumen General</h1>
 
-      {/* ===== KPIs DERIVADOS DEL ESTADO ===== */}
+      {/* ===== KPIS DERIVADOS DEL ESTADO ===== */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {kpis.map((kpi) => (
           <div key={kpi.etiqueta} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">

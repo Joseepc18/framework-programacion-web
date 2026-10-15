@@ -1,13 +1,14 @@
 // src/data/red.ts
-// Datos de ejemplo (mock) de la red multinivel de referidos.
-// Incluye la estructura jerárquica (árbol) y funciones puras para calcular
-// comisiones, totales y el nivel alcanzado por el usuario.
+// Tipos y funciones puras de la red multinivel.
+// Los datos ya no viven aquí: llegan del backend con GET /api/red (PostgreSQL + caché Redis)
+// y estas funciones se encargan de resumirlos (KPIs) y de calcular comisiones por nivel.
 
 export interface Referido {
   id: number;
   nombre: string;
-  nivel: number;     // 1 = directo, 2 = indirecto, 3 = tercer nivel
-  ventas: number;    // ventas mensuales en dólares
+  nivel: number;      // 0 = usuario raíz, 1 = directo, 2 = indirecto, 3 = tercer nivel
+  ventas: number;     // ventas acumuladas del referido en dólares
+  comisiones: number; // saldo de comisiones acumulado por el referido
   hijos?: Referido[]; // referidos de un nivel más abajo
 }
 
@@ -16,44 +17,6 @@ export const TASA_COMISION: Record<number, number> = {
   1: 0.10, // 10 % de las ventas de nivel 1
   2: 0.05, // 5 % de las ventas de nivel 2
   3: 0.02, // 2 % de las ventas de nivel 3
-};
-
-// Raíz del árbol: el usuario autenticado (nivel 0) con sus referidos
-export const redInicial: Referido = {
-  id: 0,
-  nombre: "Tú",
-  nivel: 0,
-  ventas: 2400,
-  hijos: [
-    {
-      id: 1,
-      nombre: "Ana García",
-      nivel: 1,
-      ventas: 1200,
-      hijos: [
-        {
-          id: 4,
-          nombre: "Carlos Ruiz",
-          nivel: 2,
-          ventas: 500,
-          hijos: [
-            { id: 7, nombre: "Diana Paz", nivel: 3, ventas: 300 },
-          ],
-        },
-        { id: 5, nombre: "Sofía León", nivel: 2, ventas: 430 },
-      ],
-    },
-    {
-      id: 2,
-      nombre: "Luis Poveda",
-      nivel: 1,
-      ventas: 850,
-      hijos: [
-        { id: 6, nombre: "Marco Díaz", nivel: 2, ventas: 380 },
-      ],
-    },
-    { id: 3, nombre: "Marta Sánchez", nivel: 1, ventas: 430 },
-  ],
 };
 
 // Total de referidos de la red (sin contar al usuario raíz)
@@ -72,14 +35,11 @@ export const sumarVentasRed = (raiz: Referido): number => {
 export const comisionDeReferido = (ref: Referido): number =>
   ref.ventas * (TASA_COMISION[ref.nivel] ?? 0);
 
-// Comisiones totales del mes acumuladas sobre toda la red
-export const sumarComisiones = (raiz: Referido): number => {
-  const directos = raiz.hijos ?? [];
-  return directos.reduce(
-    (total, hijo) => total + comisionDeReferido(hijo) + sumarComisiones(hijo),
-    0
-  );
-};
+// Comisiones acumuladas de la red: los saldos que el backend acreditó a cada nodo
+// (incluye el saldo del usuario raíz, que es el que aparece en su panel).
+export const sumarComisiones = (raiz: Referido): number =>
+  (raiz.comisiones ?? 0) +
+  (raiz.hijos ?? []).reduce((total, hijo) => total + sumarComisiones(hijo), 0);
 
 // Nivel alcanzado por el usuario según la cantidad de referidos directos
 export const nivelAlcanzado = (referidosDirectos: number): string => {
