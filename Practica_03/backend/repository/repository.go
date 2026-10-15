@@ -1,88 +1,138 @@
 // Declaramos el paquete repository, cuya única responsabilidad es proveer el acceso a los datos.
-// Por ahora los datos son estáticos (en memoria); en la siguiente fase se reemplazarán por una base de datos relacional.
+// Los datos viven en PostgreSQL; este paquete traduce cada consulta SQL a las estructuras de models.
 package repository
 
 import (
+	// Importamos context para propagar el contexto de cada consulta.
+	"context"
+	// Importamos errors para distinguir el caso "sin resultados" de un error real.
+	"errors"
+
+	// Importamos pgx para reconocer el error pgx.ErrNoRows.
+	"github.com/jackc/pgx/v5"
+	// Importamos pgxpool para recibir el pool de conexiones.
+	"github.com/jackc/pgx/v5/pgxpool"
 	// Importamos nuestro paquete de modelos para usar las estructuras Usuario, Producto y Referido.
 	"multicatalogo-backend/models"
 )
 
-// usuarios contiene las cuentas registradas con su rol y token ficticio.
-var usuarios = []models.Usuario{
-	// Cuenta del administrador.
-	{Email: "admin@upse.edu.ec", Password: "123456", Rol: "admin", Token: "fake-jwt-token-123"},
-	// Cuenta de un cliente registrado.
-	{Email: "cliente@upse.edu.ec", Password: "123456", Rol: "cliente", Token: "fake-jwt-token-456"},
+// db es el pool de conexiones inyectado desde main al arrancar la aplicación.
+var db *pgxpool.Pool
+
+// Inicializar recibe el pool de conexiones que usarán todas las funciones del repositorio.
+func Inicializar(pool *pgxpool.Pool) {
+	db = pool
 }
 
-// productos contiene el catálogo de artículos disponibles.
-var productos = []models.Producto{
-	// Agregamos el primer producto con sus respectivos valores para ID, Nombre, Precio e Img.
-	{ID: 1, Nombre: "Serum Revitalizante", Precio: 45.00, Img: "https://picsum.photos/seed/serum/600/400"},
-	// Agregamos el segundo producto a la lista.
-	{ID: 2, Nombre: "Crema Hidratante Pro", Precio: 32.50, Img: "https://picsum.photos/seed/crema/600/400"},
-	// Agregamos el tercer producto a la lista.
-	{ID: 3, Nombre: "Tónico Purificante", Precio: 28.00, Img: "https://picsum.photos/seed/tonico/600/400"},
-	// Agregamos el cuarto producto a la lista.
-	{ID: 4, Nombre: "Mascarilla Nocturna", Precio: 50.00, Img: "https://picsum.photos/seed/mascarilla/600/400"},
-}
+// BuscarUsuarioPorCredenciales devuelve el usuario cuyo email y contraseña coinciden.
+// El booleano indica si se encontró; el error indica un fallo de la base de datos.
+func BuscarUsuarioPorCredenciales(email, password string) (models.Usuario, bool, error) {
+	var u models.Usuario
 
-// red contiene el árbol de la red multinivel; la raíz es el usuario autenticado (nivel 0).
-var red = models.Referido{
-	ID: 0, Nombre: "Tú", Nivel: 0, Ventas: 2400,
-	Hijos: []models.Referido{
-		{
-			ID: 1, Nombre: "Ana García", Nivel: 1, Ventas: 1200,
-			Hijos: []models.Referido{
-				{
-					ID: 4, Nombre: "Carlos Ruiz", Nivel: 2, Ventas: 500,
-					Hijos: []models.Referido{
-						{ID: 7, Nombre: "Diana Paz", Nivel: 3, Ventas: 300},
-					},
-				},
-				{ID: 5, Nombre: "Sofía León", Nivel: 2, Ventas: 430},
-			},
-		},
-		{
-			ID: 2, Nombre: "Luis Poveda", Nivel: 1, Ventas: 850,
-			Hijos: []models.Referido{
-				{ID: 6, Nombre: "Marco Díaz", Nivel: 2, Ventas: 380},
-			},
-		},
-		{ID: 3, Nombre: "Marta Sánchez", Nivel: 1, Ventas: 430},
-	},
-}
+	// Consultamos con parámetros ($1, $2) para evitar inyección SQL.
+	err := db.QueryRow(context.Background(),
+		`SELECT id, email, rol FROM usuarios WHERE email = $1 AND password = $2`,
+		email, password,
+	).Scan(&u.ID, &u.Email, &u.Rol)
 
-// BuscarUsuario devuelve el usuario cuyas credenciales coinciden; el booleano indica si se encontró.
-func BuscarUsuario(email, password string) (models.Usuario, bool) {
-	// Recorremos las cuentas registradas comparando correo y contraseña.
-	for _, u := range usuarios {
-		if u.Email == email && u.Password == password {
-			return u, true
-		}
+	// Si no hay filas, las credenciales no coinciden: no es un error de la base de datos.
+	if errors.Is(err, pgx.ErrNoRows) {
+		return models.Usuario{}, false, nil
 	}
-	// Si ninguna cuenta coincide, devolvemos un usuario vacío y false.
-	return models.Usuario{}, false
-}
-
-// ObtenerProductos devuelve el catálogo completo.
-func ObtenerProductos() []models.Producto {
-	return productos
-}
-
-// ObtenerProductoPorID devuelve el producto con el ID indicado; el booleano indica si existe.
-func ObtenerProductoPorID(id int) (models.Producto, bool) {
-	// Recorremos el catálogo buscando el ID solicitado.
-	for _, p := range productos {
-		if p.ID == id {
-			return p, true
-		}
+	if err != nil {
+		return models.Usuario{}, false, err
 	}
-	// Si no existe, devolvemos un producto vacío y false.
-	return models.Producto{}, false
+	return u, true, nil
+}
+
+// ObtenerProductos devuelve el catálogo completo ordenado por ID.
+func ObtenerProductos() ([]models.Producto, error) {
+	rows, err := db.Query(context.Background(),
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria FROM productos ORDER BY id`,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// CollectRows recorre las filas, las mapea a Producto y cierra el cursor automáticamente.
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.Producto, error) {
+		var p models.Producto
+		err := row.Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria)
+		return p, err
+	})
+}
+
+// ObtenerProductoPorID devuelve el producto con el ID indicado.
+// El booleano indica si existe; el error indica un fallo de la base de datos.
+func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
+	var p models.Producto
+
+	err := db.QueryRow(context.Background(),
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria FROM productos WHERE id = $1`,
+		id,
+	).Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria)
+
+	// Si no hay filas, el producto no existe.
+	if errors.Is(err, pgx.ErrNoRows) {
+		return models.Producto{}, false, nil
+	}
+	if err != nil {
+		return models.Producto{}, false, err
+	}
+	return p, true, nil
+}
+
+// referidoPlano representa una fila de la tabla referidos antes de armar el árbol.
+type referidoPlano struct {
+	referido models.Referido
+	parentID *int
 }
 
 // ObtenerRed devuelve el árbol completo de la red multinivel.
-func ObtenerRed() models.Referido {
-	return red
+// Se consulta la tabla como una lista plana y el árbol se reconstruye en memoria usando parent_id.
+func ObtenerRed() (models.Referido, error) {
+	rows, err := db.Query(context.Background(),
+		`SELECT id, nombre, nivel, ventas, parent_id FROM referidos ORDER BY id`,
+	)
+	if err != nil {
+		return models.Referido{}, err
+	}
+
+	filas, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (referidoPlano, error) {
+		var f referidoPlano
+		err := row.Scan(&f.referido.ID, &f.referido.Nombre, &f.referido.Nivel, &f.referido.Ventas, &f.parentID)
+		return f, err
+	})
+	if err != nil {
+		return models.Referido{}, err
+	}
+
+	// Agrupamos los IDs de los hijos de cada nodo y ubicamos la raíz (la fila sin parent_id).
+	hijosDe := map[int][]int{}
+	nodos := map[int]models.Referido{}
+	raizID := -1
+	for _, f := range filas {
+		nodos[f.referido.ID] = f.referido
+		if f.parentID == nil {
+			raizID = f.referido.ID
+		} else {
+			hijosDe[*f.parentID] = append(hijosDe[*f.parentID], f.referido.ID)
+		}
+	}
+
+	// Si la tabla está vacía, no hay red que devolver.
+	if raizID == -1 {
+		return models.Referido{}, errors.New("la red no tiene un nodo raíz")
+	}
+
+	return construirArbol(raizID, nodos, hijosDe), nil
+}
+
+// construirArbol arma recursivamente el nodo indicado junto con todos sus descendientes.
+func construirArbol(id int, nodos map[int]models.Referido, hijosDe map[int][]int) models.Referido {
+	nodo := nodos[id]
+	for _, hijoID := range hijosDe[id] {
+		nodo.Hijos = append(nodo.Hijos, construirArbol(hijoID, nodos, hijosDe))
+	}
+	return nodo
 }

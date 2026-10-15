@@ -15,8 +15,14 @@ import (
 
 // GetProductos es la función controladora encargada de devolver el catálogo de artículos.
 func GetProductos(c *fiber.Ctx) error {
+	// Consultamos el catálogo en la base de datos.
+	productos, err := repository.ObtenerProductos()
+	if err != nil {
+		// Si la consulta falla, respondemos HTTP 500.
+		return errorInterno(c, err)
+	}
 	// Fiber convierte automáticamente el slice de estructuras a formato JSON y lo envía como respuesta al cliente.
-	return c.JSON(repository.ObtenerProductos())
+	return c.JSON(productos)
 }
 
 // GetProductoPorID devuelve un único producto según el ID recibido en la URL (/api/productos/:id).
@@ -33,7 +39,11 @@ func GetProductoPorID(c *fiber.Ctx) error {
 	}
 
 	// Buscamos el producto en el repositorio.
-	producto, ok := repository.ObtenerProductoPorID(id)
+	producto, ok, err := repository.ObtenerProductoPorID(id)
+	if err != nil {
+		// Si la consulta falla, respondemos HTTP 500.
+		return errorInterno(c, err)
+	}
 	if !ok {
 		// Si no existe un producto con ese ID, retornamos HTTP 404 (No encontrado).
 		return c.Status(fiber.StatusNotFound).JSON(models.APIError{

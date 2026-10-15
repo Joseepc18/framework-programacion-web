@@ -2,6 +2,8 @@
 package controllers
 
 import (
+	// Importamos strconv para armar el token ficticio a partir del ID del usuario.
+	"strconv"
 	// Importamos strings para limpiar espacios en blanco de los campos recibidos.
 	"strings"
 
@@ -46,7 +48,11 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// Consultamos al repositorio si existe una cuenta con esas credenciales.
-	usuario, ok := repository.BuscarUsuario(req.Email, req.Password)
+	usuario, ok, err := repository.BuscarUsuarioPorCredenciales(req.Email, req.Password)
+	if err != nil {
+		// Si la consulta falla, respondemos HTTP 500.
+		return errorInterno(c, err)
+	}
 	if !ok {
 		// Si las credenciales son incorrectas, retornamos un estado HTTP 401 (No autorizado).
 		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
@@ -55,6 +61,9 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
+	// Generamos un token ficticio a partir del ID (la autenticación real llegará en una fase posterior).
+	token := "fake-jwt-token-" + strconv.Itoa(usuario.ID)
+
 	// Si las credenciales son válidas, retornamos HTTP 200 con el mismo JSON que ya espera el frontend.
-	return c.JSON(fiber.Map{"token": usuario.Token, "email": usuario.Email, "rol": usuario.Rol})
+	return c.JSON(fiber.Map{"token": token, "email": usuario.Email, "rol": usuario.Rol})
 }

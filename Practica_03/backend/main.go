@@ -2,16 +2,39 @@
 package main
 
 import (
+	// Importamos log para reportar errores fatales de arranque.
+	"log"
+	// Importamos os y os/signal para detectar cuando se detiene la aplicación (Ctrl+C).
+	"os"
+	"os/signal"
+	// Importamos syscall para escuchar también la señal de terminación del sistema.
+	"syscall"
+
 	// Importamos el framework principal Fiber.
 	"github.com/gofiber/fiber/v2"
 	// Importamos el middleware CORS para gestionar la seguridad entre distintos puertos/dominios.
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	// Importamos el paquete config para conectarnos a PostgreSQL.
+	"multicatalogo-backend/config"
+	// Importamos el repositorio para inyectarle la conexión a la base de datos.
+	"multicatalogo-backend/repository"
 	// Importamos nuestro propio paquete de rutas para delegarle la configuración de los endpoints.
 	"multicatalogo-backend/routes"
 )
 
 // func main es el punto de entrada de la aplicación en Go. Todo comienza a ejecutarse aquí.
 func main() {
+	// Abrimos el pool de conexiones a PostgreSQL; si la base no responde, no tiene sentido levantar la API.
+	pool, err := config.ConectarDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Cerramos el pool cuando main termine, liberando todas las conexiones abiertas.
+	defer pool.Close()
+
+	// Inyectamos la conexión en la capa de datos.
+	repository.Inicializar(pool)
+
 	// Instanciamos una nueva aplicación de Fiber y la guardamos en la variable 'app'.
 	app := fiber.New()
 
@@ -26,8 +49,19 @@ func main() {
 	// Llamamos a la función SetupRoutes de nuestro paquete 'routes', enviándole la instancia de nuestra 'app'.
 	routes.SetupRoutes(app)
 
+	// Al recibir Ctrl+C (o la señal de terminación), apagamos Fiber de forma ordenada.
+	// Así app.Listen retorna, main termina y se ejecuta el defer que cierra el pool.
+	go func() {
+		senal := make(chan os.Signal, 1)
+		signal.Notify(senal, os.Interrupt, syscall.SIGTERM)
+		<-senal
+		_ = app.Shutdown()
+	}()
+
 	// Ponemos a la aplicación a escuchar peticiones en el puerto 3000 de la máquina local. (Bloquea el hilo de ejecución).
-	app.Listen(":3000")
+	if err := app.Listen(":3000"); err != nil {
+		log.Println(err)
+	}
 }
 
 
