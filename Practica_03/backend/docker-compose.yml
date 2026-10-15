@@ -20,5 +20,43 @@ services:
       timeout: 3s
       retries: 10
 
+  # Caché en memoria para las consultas de lectura recurrentes (catálogo y red multinivel).
+  # El backend en Go corre en la máquina (go run .) y se conecta a PostgreSQL y a Redis
+  # usando las variables DB_* y REDIS_ADDR del archivo .env.
+  redis:
+    image: redis:alpine
+    container_name: multicatalogo-redis
+    ports:
+      # Puerto de Redis en la máquina local.
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      # Comprueba que Redis responde antes de dar el servicio por listo.
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # API en Go. Se construye con el Dockerfile del backend y espera a que
+  # PostgreSQL y Redis estén listos antes de arrancar.
+  backend:
+    build: .
+    container_name: multicatalogo-backend
+    environment:
+      # Dentro de la red de Docker cada servicio se llama por su nombre, no por localhost.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_ADDR: redis:6379
+    ports:
+      # Mismo puerto que usa el frontend en desarrollo (http://localhost:3000).
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   multicatalogo-data:
