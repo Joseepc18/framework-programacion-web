@@ -35,6 +35,13 @@ func main() {
 	// Inyectamos la conexión en la capa de datos.
 	repository.Inicializar(pool)
 
+	// Abrimos la conexión con Redis, el almacenamiento en caché de las consultas de lectura.
+	if err := config.ConectarRedis(); err != nil {
+		log.Fatal(err)
+	}
+	// Cerramos el cliente de Redis cuando main termine.
+	defer func() { _ = config.Cache.Close() }()
+
 	// Instanciamos una nueva aplicación de Fiber y la guardamos en la variable 'app'.
 	app := fiber.New()
 
