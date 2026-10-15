@@ -11,12 +11,22 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// Importamos nuestro paquete de modelos para usar LoginRequest y APIError.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para consultar las cuentas registradas.
-	"multicatalogo-backend/repository"
 )
 
-// Login es la función controladora que se ejecutará cuando el cliente envíe sus credenciales.
-func Login(c *fiber.Ctx) error {
+// AuthController agrupa la lógica de la autenticación y recibe el repositorio inyectado,
+// en lugar de llamar a funciones sueltas que usaban una variable global.
+type AuthController struct {
+	// repo es el acceso a los datos inyectado desde main.go.
+	repo DBRepository
+}
+
+// NuevoAuthController construye el controlador con la dependencia que recibirá.
+func NuevoAuthController(repo DBRepository) *AuthController {
+	return &AuthController{repo: repo}
+}
+
+// Login es el manejador que se ejecuta cuando el cliente envía sus credenciales.
+func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 	// Creamos una variable 'req' del tipo LoginRequest (ubicada en nuestro paquete models) para almacenar los datos.
 	var req models.LoginRequest
 
@@ -48,7 +58,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// Consultamos al repositorio si existe una cuenta con esas credenciales.
-	usuario, ok, err := repository.BuscarUsuarioPorCredenciales(req.Email, req.Password)
+	usuario, ok, err := ctrl.repo.BuscarUsuarioPorCredenciales(req.Email, req.Password)
 	if err != nil {
 		// Si la consulta falla, respondemos HTTP 500.
 		return errorInterno(c, err)

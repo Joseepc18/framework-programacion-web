@@ -6,8 +6,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// HealthController agrupa la verificación de estado. No tiene dependencias: por eso
+// su estructura va vacía, pero se mantiene el mismo patrón que los demás controladores.
+type HealthController struct{}
+
+// NuevoHealthController construye el controlador de estado.
+func NuevoHealthController() *HealthController {
+	return &HealthController{}
+}
+
 // HealthCheck confirma que el servidor está levantado y respondiendo peticiones.
-func HealthCheck(c *fiber.Ctx) error {
+func (ctrl *HealthController) HealthCheck(c *fiber.Ctx) error {
 	// Retornamos HTTP 200 con un JSON fijo que indica que el servidor está operativo.
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "ok",

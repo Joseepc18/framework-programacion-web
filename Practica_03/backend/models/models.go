@@ -49,8 +49,68 @@ type Referido struct {
 	Nivel int `json:"nivel"`
 	// Ventas son las ventas mensuales del referido en dólares.
 	Ventas float64 `json:"ventas"`
+	// Comisiones es el saldo acumulado que el referido ha ganado por las compras de su red.
+	Comisiones float64 `json:"comisiones"`
 	// Hijos son los referidos un nivel más abajo; omitempty evita enviar el campo si no tiene hijos.
 	Hijos []Referido `json:"hijos,omitempty"`
+}
+
+// ItemCarrito representa un producto del carrito tal como lo envía Checkout.tsx.
+type ItemCarrito struct {
+	// ID es el identificador del producto que se está comprando.
+	ID int `json:"id"`
+	// Nombre es el nombre del producto en el momento de la compra.
+	Nombre string `json:"nombre"`
+	// Cantidad es el número de unidades pedidas.
+	Cantidad int `json:"cantidad"`
+	// Precio es el precio unitario en dólares.
+	Precio float64 `json:"precio"`
+}
+
+// DatosCliente agrupa los datos del formulario de envío del checkout.
+type DatosCliente struct {
+	// Nombre es el nombre de quien recibe el pedido.
+	Nombre string `json:"nombre"`
+	// Email es el correo de contacto del pedido.
+	Email string `json:"email"`
+	// Direccion es la dirección de entrega.
+	Direccion string `json:"direccion"`
+	// Ciudad es la ciudad de entrega.
+	Ciudad string `json:"ciudad"`
+	// Telefono es el teléfono de contacto.
+	Telefono string `json:"telefono"`
+}
+
+// CheckoutRequest es el cuerpo JSON que recibe POST /api/checkout.
+type CheckoutRequest struct {
+	// Cliente son los datos del formulario de envío.
+	Cliente DatosCliente `json:"cliente"`
+	// UsuarioEmail es el correo de la cuenta autenticada: identifica su nodo en la red.
+	UsuarioEmail string `json:"usuarioEmail"`
+	// MetodoPago es la forma de pago elegida (tarjeta, transferencia, efectivo).
+	MetodoPago string `json:"metodoPago"`
+	// Items es el arreglo de productos del carrito.
+	Items []ItemCarrito `json:"items"`
+}
+
+// Pedido es el registro que se guarda en PostgreSQL y se devuelve al frontend tras un checkout exitoso.
+type Pedido struct {
+	// ID es el identificador del pedido generado por la base de datos.
+	ID int `json:"id"`
+	// Numero es el código legible del pedido (MC-000001).
+	Numero string `json:"numero"`
+	// Estado indica la situación del pedido; tras el COMMIT es "confirmado".
+	Estado string `json:"estado"`
+	// Total es la suma de los subtotales del pedido.
+	Total float64 `json:"total"`
+	// Fecha es la fecha de registro ya formateada para mostrarla en la confirmación.
+	Fecha string `json:"fecha"`
+	// MetodoPago es la forma de pago con la que se registró el pedido.
+	MetodoPago string `json:"metodoPago"`
+	// Cliente son los datos del formulario de envío.
+	Cliente DatosCliente `json:"cliente"`
+	// Items es el detalle del pedido tal como quedó registrado.
+	Items []ItemCarrito `json:"items"`
 }
 
 // APIError estandariza el formato de todas las respuestas de error HTTP de la API.
