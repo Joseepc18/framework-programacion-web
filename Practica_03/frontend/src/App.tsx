@@ -15,6 +15,7 @@ import Registro from './components/Registro';
 import AdminProductos from './components/AdminProductos';
 import MisPedidos from './components/MisPedidos';
 import AdminPedidos from './components/AdminPedidos';
+import MisComisiones from './components/MisComisiones';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -74,7 +75,6 @@ function App() {
                 {/* Solo administrador: Dashboard y Red multinivel */}
                 <Route element={<AdminRoute />}>
                   <Route index element={<Dashboard />} />
-                  <Route path="mi-red" element={<MiRed />} />
                   <Route path="admin/productos" element={<AdminProductos />} />
                   <Route path="admin/pedidos" element={<AdminPedidos />} />
                 </Route>
@@ -88,6 +88,9 @@ function App() {
                 <Route path="confirmacion" element={<Confirmacion />} />
                 {/* Historial propio: el backend filtra por el usuario del token */}
                 <Route path="mis-pedidos" element={<MisPedidos />} />
+                {/* Red y ledger propios: cada cuenta ve SU subárbol y SU ledger */}
+                <Route path="mi-red" element={<MiRed />} />
+                <Route path="comisiones" element={<MisComisiones />} />
               </Route>
             </Route>
 

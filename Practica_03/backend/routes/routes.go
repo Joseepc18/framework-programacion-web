@@ -53,4 +53,11 @@ func SetupRoutes(app *fiber.App) {
 
 	// Detalle con líneas: lo consulta el dueño (token) o el administrador.
 	app.Get("/api/pedidos/:id", middleware.RequireAuth(), controllers.GetPedidoDetalle)
+
+	// ===== Fase 4: ledger de comisiones y red propia =====
+	// Cada usuario ve SU subárbol de referidos (no el árbol global de la semilla).
+	app.Get("/api/red/mia", middleware.RequireAuth(), controllers.GetRedMia)
+
+	// Ledger de comisiones del usuario: totales pendiente y pagado incluidos.
+	app.Get("/api/comisiones/mias", middleware.RequireAuth(), controllers.GetComisionesMias)
 }

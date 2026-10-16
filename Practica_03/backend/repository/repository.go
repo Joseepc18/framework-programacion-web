@@ -436,6 +436,12 @@ func CrearPedido(ctx context.Context, usuarioID *int, email string, req models.C
 		}
 	}
 
+	// El ledger de comisiones nace junto con el pedido, dentro de la MISMA
+	// transacción: o se registran ambas cosas o no se registra ninguna.
+	if err := repartirComisionesEnTx(ctx, tx, email, pedidoID, total); err != nil {
+		return models.PedidoConfirmado{}, err
+	}
+
 	// Confirmamos la transacción
 	if err := tx.Commit(ctx); err != nil {
 		return models.PedidoConfirmado{}, err
@@ -493,18 +499,7 @@ type referidoPlano struct {
 // ObtenerRed devuelve el árbol completo de la red multinivel.
 // Se consulta la tabla como una lista plana y el árbol se reconstruye en memoria usando parent_id.
 func ObtenerRed() (models.Referido, error) {
-	rows, err := db.Query(context.Background(),
-		`SELECT id, nombre, nivel, ventas, parent_id FROM referidos ORDER BY id`,
-	)
-	if err != nil {
-		return models.Referido{}, err
-	}
-
-	filas, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (referidoPlano, error) {
-		var f referidoPlano
-		err := row.Scan(&f.referido.ID, &f.referido.Nombre, &f.referido.Nivel, &f.referido.Ventas, &f.parentID)
-		return f, err
-	})
+	filas, err := cargarRedPlana(context.Background())
 	if err != nil {
 		return models.Referido{}, err
 	}

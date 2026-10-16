@@ -1,10 +1,11 @@
 // src/components/MiRed.tsx
-// Red multinivel visual (Tema 5):
-// - Resumen: referidos activos, ventas de la red, comisiones del mes y nivel alcanzado
-// - Árbol jerárquico recursivo de referidos con comisión calculada por nivel
+// Red multinivel del usuario autenticado (Fase 4):
+// - Resumen: referidos activos, ventas de la red, comisiones del mes y nivel
+// - Árbol jerárquico recursivo de SU subárbol (no el árbol global de la semilla)
+// - Link de invitación /registro?ref=CODIGO con botón para copiarlo
 import { useState, useEffect } from 'react';
-import { redInicial, contarRed, sumarVentasRed, sumarComisiones, nivelAlcanzado, comisionDeReferido, TASA_COMISION, type Referido } from '../data/red';
-import { getRed } from '../services/redService';
+import { contarRed, sumarVentasRed, sumarComisiones, nivelAlcanzado, comisionDeReferido, TASA_COMISION, type Referido } from '../data/red';
+import { getRedMia } from '../services/redService';
 
 // Colores y etiquetas por nivel para el árbol
 const NIVEL_ESTILO: Record<number, { badge: string; border: string; tasa: string }> = {
@@ -54,29 +55,49 @@ const NodoReferido = ({ nodo }: { nodo: Referido }) => {
 };
 
 const MiRed = () => {
-  const [red, setRed] = useState<Referido>(redInicial);
+  const [red, setRed] = useState<Referido | null>(null);
+  const [codigo, setCodigo] = useState<string>("");
   const [cargando, setCargando] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [copiado, setCopiado] = useState<boolean>(false);
 
   useEffect(() => {
-    getRed()
+    getRedMia()
       .then((data) => {
-        if (data && data.nombre) {
-          setRed(data);
-        }
+        setRed(data.red);
+        setCodigo(data.codigo);
+        setError("");
       })
       .catch((err) => {
-        console.warn("No se pudo cargar la red desde el servidor, usando datos locales:", err);
+        setError(err.message || "No se pudo cargar tu red de referidos");
       })
       .finally(() => {
         setCargando(false);
       });
   }, []);
 
-  // KPIs derivados de los datos de la red
-  const referidosActivos = contarRed(red);
-  const ventasRed = sumarVentasRed(red);
-  const comisionesMes = sumarComisiones(red);
-  const nivel = nivelAlcanzado(red.hijos?.length ?? 0);
+  // Link de invitación absoluto: se puede compartir por WhatsApp o correo
+  const linkInvitacion = codigo
+    ? `${window.location.origin}/registro?ref=${codigo}`
+    : "";
+
+  // Copia el link al portapapeles y confirma visualmente la acción
+  const copiarLink = async () => {
+    try {
+      await navigator.clipboard.writeText(linkInvitacion);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      window.prompt("Copia el link de invitación:", linkInvitacion);
+    }
+  };
+
+  // Los KPIs y el árbol se calculan SOLO con la red real del token:
+  // nunca mezclamos con los datos de ejemplo de la semilla.
+  const referidosActivos = red ? contarRed(red) : 0;
+  const ventasRed = red ? sumarVentasRed(red) : 0;
+  const comisionesMes = red ? sumarComisiones(red) : 0;
+  const nivel = red ? nivelAlcanzado(red.hijos?.length ?? 0) : "—";
 
   const resumen = [
     { etiqueta: "Referidos Activos", valor: referidosActivos.toString(), color: "text-indigo-600" },
@@ -91,6 +112,44 @@ const MiRed = () => {
       <p className="text-slate-500 mb-6">
         Estructura multinivel: gana el {TASA_COMISION[1] * 100} % de nivel 1, {TASA_COMISION[2] * 100} % de nivel 2 y {TASA_COMISION[3] * 100} % de nivel 3.
       </p>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 border border-red-200">
+          {error}
+        </div>
+      )}
+
+      {/* ===== LINK DE INVITACIÓN ===== */}
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 mb-8">
+        <h2 className="text-lg font-bold text-slate-800 mb-1">Invita a tu red</h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Comparte tu enlace: quien se registre con él quedará vinculado a tu nodo.
+        </p>
+        {linkInvitacion ? (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              readOnly
+              value={linkInvitacion}
+              onFocus={(e) => e.currentTarget.select()}
+              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-700 font-mono"
+              aria-label="Link de invitación"
+            />
+            <button
+              onClick={copiarLink}
+              className={`px-4 py-2 rounded-lg font-semibold text-white transition ${
+                copiado ? "bg-green-600" : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
+            >
+              {copiado ? "¡Copiado!" : "Copiar link"}
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Tu cuenta no tiene código de invitación asignado.
+          </p>
+        )}
+      </div>
 
       {/* ===== TARJETAS DE RESUMEN ===== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -108,27 +167,43 @@ const MiRed = () => {
           Jerarquía de tu Red {cargando && <span className="text-xs text-slate-400 font-normal">(actualizando...)</span>}
         </h2>
 
-        {/* Raíz: el usuario */}
-        <div className="bg-slate-900 text-white rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold">
-              {red.nombre.charAt(0)}
+        {/* Raíz: el usuario (solo cuando su red real ya cargó) */}
+        {red ? (
+          <>
+            <div className="bg-slate-900 text-white rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold">
+                  {red.nombre.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-semibold">{red.nombre}</p>
+                  <p className="text-xs text-slate-300">Nivel alcanzado: {nivel}</p>
+                </div>
+              </div>
+              <p className="font-bold text-green-400">
+                Comisiones del mes: ${comisionesMes.toFixed(2)}
+              </p>
             </div>
-            <div>
-              <p className="font-semibold">{red.nombre}</p>
-              <p className="text-xs text-slate-300">Nivel alcanzado: {nivel}</p>
-            </div>
-          </div>
-          <p className="font-bold text-green-400">
-            Comisiones del mes: ${comisionesMes.toFixed(2)}
-          </p>
-        </div>
 
-        <ul className="space-y-3">
-          {red.hijos?.map((hijo) => (
-            <NodoReferido key={hijo.id} nodo={hijo} />
-          ))}
-        </ul>
+            {(red.hijos?.length ?? 0) === 0 ? (
+              <p className="text-sm text-slate-500">
+                Todavía no tienes referidos. Comparte tu link de invitación para empezar.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {red.hijos?.map((hijo) => (
+                  <NodoReferido key={hijo.id} nodo={hijo} />
+                ))}
+              </ul>
+            )}
+          </>
+        ) : cargando ? (
+          <p className="text-sm text-slate-500">Cargando tu red...</p>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Tu cuenta aún no tiene un nodo de red asociado.
+          </p>
+        )}
       </div>
     </div>
   );

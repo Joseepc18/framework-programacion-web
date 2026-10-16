@@ -149,6 +149,51 @@ type Pagina struct {
 	Total int `json:"total"`
 }
 
+// Comision es una fila del ledger de comisiones: quién cobró, de qué pedido,
+// en qué nivel, con qué porcentaje y en qué estado está.
+type Comision struct {
+	// ID es el identificador de la fila en el ledger.
+	ID int `json:"id"`
+	// PedidoID referencia el pedido que generó la comisión.
+	PedidoID int `json:"pedido_id"`
+	// PedidoNumero es el código legible del pedido (MC-...).
+	PedidoNumero string `json:"pedido_numero"`
+	// Nivel es la profundidad en la red del cobrador (1 a 3).
+	Nivel int `json:"nivel"`
+	// Porcentaje es la tasa aplicada (0.10, 0.05 o 0.02).
+	Porcentaje float64 `json:"porcentaje"`
+	// Monto es la plata acreditada por esta fila.
+	Monto float64 `json:"monto"`
+	// Estado es pendiente, aprobada, pagada o revertida.
+	Estado string `json:"estado"`
+	// CreadoEn registra cuándo se generó la comisión.
+	CreadoEn time.Time `json:"creado_en"`
+}
+
+// PaginaComisiones agrega los totales por estado a la paginación estándar.
+type PaginaComisiones struct {
+	// Data es la página de filas del ledger.
+	Data []Comision `json:"data"`
+	// Page, Limit y Total describen la paginación de las filas.
+	Page  int `json:"page"`
+	Limit int `json:"limit"`
+	Total int `json:"total"`
+	// Pendiente es la suma de comisiones aún no pagadas.
+	Pendiente float64 `json:"pendiente"`
+	// Pagado es la suma de comisiones ya liquidadas.
+	Pagado float64 `json:"pagado"`
+}
+
+// RedPropia devuelve el subárbol de red del usuario y su código de invitación.
+type RedPropia struct {
+	// Red es el subárbol que cuelga del nodo del usuario (nil si no tiene nodo).
+	Red *Referido `json:"red"`
+	// Codigo es el código de invitación del propio nodo (link /registro?ref=).
+	Codigo string `json:"codigo"`
+	// ReferidoID es el nodo del que cuelga la red (0 si no existe).
+	ReferidoID int `json:"referido_id"`
+}
+
 // Referido define un nodo del árbol de la red multinivel.
 type Referido struct {
 	// ID es el identificador único del referido.

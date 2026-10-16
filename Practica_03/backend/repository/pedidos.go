@@ -53,6 +53,11 @@ func normalizarPagina(pageStr, limitStr string) (int, int, int) {
 	return pagina, limite, (pagina - 1) * limite
 }
 
+// itoa convierte un entero a texto para reutilizar normalizarPagina.
+func itoa(n int) string {
+	return strconv.Itoa(n)
+}
+
 // seleccionPedidos define las columnas comunes a cabecera de pedido.
 const seleccionPedidos = `id, numero, cliente_nombre, cliente_email, cliente_direccion,
 	cliente_ciudad, cliente_telefono, metodo_pago, total, usuario_id, estado, creado_en`
