@@ -26,6 +26,11 @@ func (ctrl *AuthController) Register(c *fiber.Ctx) error {
 		})
 	}
 
+	// El código de invitación también puede llegar como query (?ref=CODIGO), igual que el link del frontend.
+	if strings.TrimSpace(req.Ref) == "" {
+		req.Ref = c.Query("ref")
+	}
+
 	// Validamos los campos obligatorios antes de tocar la base de datos.
 	camposVacios := []string{}
 	if strings.TrimSpace(req.Nombre) == "" {

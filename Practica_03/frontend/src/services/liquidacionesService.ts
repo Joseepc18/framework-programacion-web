@@ -11,6 +11,7 @@ export interface Liquidacion {
   estado: "pendiente" | "pagada";
   creado_en: string;
   pagada_en?: string;
+  periodo: string;
   cantidad_comisiones: number;
 }
 

@@ -166,6 +166,7 @@ const AdminLiquidaciones = () => {
                 <tr>
                   <th className="text-left p-3">#</th>
                   <th className="text-left p-3">Distribuidor</th>
+                  <th className="text-center p-3">Periodo</th>
                   <th className="text-center p-3">Comisiones</th>
                   <th className="text-right p-3">Total</th>
                   <th className="text-center p-3">Estado</th>
@@ -177,6 +178,7 @@ const AdminLiquidaciones = () => {
                   <tr key={l.id}>
                     <td className="p-3 text-slate-500">{l.id}</td>
                     <td className="p-3 font-medium text-slate-800">{l.nombre}</td>
+                    <td className="p-3 text-center text-slate-600">{l.periodo}</td>
                     <td className="p-3 text-center">{l.cantidad_comisiones}</td>
                     <td className="p-3 text-right font-semibold text-slate-800">
                       ${l.total.toFixed(2)}
