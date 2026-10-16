@@ -70,6 +70,10 @@ func SetupRoutes(app *fiber.App) {
 	// Cada distribuidor consulta sus propios cobros con su token.
 	app.Get("/api/liquidaciones/mias", middleware.RequireAuth(), controllers.GetLiquidacionesMias)
 
+	// ===== Fase 7: administración de usuarios (solo admin) =====
+	app.Get("/api/usuarios", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetUsuarios)
+	app.Patch("/api/usuarios/:id", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.ActualizarUsuario)
+
 	// ===== Fase 6: reportes de negocio (solo admin) =====
 	app.Get("/api/reportes/resumen", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetReporteResumen)
 	app.Get("/api/reportes/top-productos", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetReporteTopProductos)

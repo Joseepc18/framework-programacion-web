@@ -250,33 +250,40 @@ func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
 	return p, true, nil
 }
 
-// ObtenerProductosAdmin devuelve el catálogo completo (activos e inactivos)
-// para la vista administrativa, opcionalmente filtrado por un texto de búsqueda.
-func ObtenerProductosAdmin(busqueda string) ([]models.Producto, error) {
-	q := strings.TrimSpace(busqueda)
-	filas := []models.Producto{}
-	if q == "" {
-		rows, err := db.Query(context.Background(),
-			`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock, activo
-			 FROM productos ORDER BY id`)
-		if err != nil {
-			return nil, err
-		}
-		filas, err = pgx.CollectRows(rows, escanearProductoAdmin)
-		return filas, err
-	}
+// ObtenerProductosPagina devuelve una página del catálogo con búsqueda server-side (?q=, ILIKE).
+// soloActivos=true es la vista pública; false incluye los inactivos (vista admin).
+func ObtenerProductosPagina(ctx context.Context, busqueda string, soloActivos bool, page, limit int) (models.Pagina, error) {
+	pagina, limite, offset := normalizarPagina(itoa(page), itoa(limit))
 
 	// ILIKE con comodín escapado: el usuario puede escribir % o _ sin romper el filtro.
+	// Con búsqueda vacía el patrón "%" coincide con todo.
+	q := strings.TrimSpace(busqueda)
 	patron := "%" + strings.ReplaceAll(strings.ReplaceAll(q, "%", "\\%"), "_", "\\_") + "%"
-	rows, err := db.Query(context.Background(),
-		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock, activo
-		 FROM productos
-		 WHERE nombre ILIKE $1 OR categoria ILIKE $1 OR descripcion ILIKE $1
-		 ORDER BY id`, patron)
-	if err != nil {
-		return nil, err
+
+	const filtro = `WHERE ($1 OR activo = TRUE)
+		 AND (nombre ILIKE $2 OR categoria ILIKE $2 OR descripcion ILIKE $2)`
+
+	var total int
+	if err := db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM productos `+filtro,
+		!soloActivos, patron,
+	).Scan(&total); err != nil {
+		return models.Pagina{}, err
 	}
-	return pgx.CollectRows(rows, escanearProductoAdmin)
+
+	rows, err := db.Query(ctx,
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock, activo
+		 FROM productos `+filtro+` ORDER BY id LIMIT $3 OFFSET $4`,
+		!soloActivos, patron, limite, offset,
+	)
+	if err != nil {
+		return models.Pagina{}, err
+	}
+	filas, err := pgx.CollectRows(rows, escanearProductoAdmin)
+	if err != nil {
+		return models.Pagina{}, err
+	}
+	return models.Pagina{Data: filas, Page: pagina, Limit: limite, Total: total}, nil
 }
 
 // escanearProductoAdmin mapea una fila del catálogo administrativo (incluye activo).

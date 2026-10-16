@@ -24,6 +24,17 @@ import (
 // GetProductos es la función controladora encargada de devolver el catálogo de artículos.
 // Aplica el patrón Cache-Aside: primero busca en Redis y solo consulta PostgreSQL si no hay caché.
 func GetProductos(c *fiber.Ctx) error {
+	// Con ?q=, ?page= o ?limit= respondemos paginado desde PostgreSQL ({data,page,limit,total}).
+	// Sin parámetros se mantiene el catálogo completo cacheado que consume la tienda.
+	if c.Query("q") != "" || c.Query("page") != "" || c.Query("limit") != "" {
+		pagina, limite := paginaDe(c)
+		resultado, err := repository.ObtenerProductosPagina(c.Context(), c.Query("q"), true, pagina, limite)
+		if err != nil {
+			return errorInterno(c, err)
+		}
+		return c.JSON(resultado)
+	}
+
 	// Clave y tiempo de vida con los que guardamos el catálogo en Redis.
 	const clave = "productos:all"
 	const ttl = 5 * time.Minute

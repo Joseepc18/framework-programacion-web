@@ -34,11 +34,16 @@ const AdminProductos = () => {
   const [guardando, setGuardando] = useState<boolean>(false);
   const [errorForm, setErrorForm] = useState<string>("");
 
-  const cargar = (q?: string) => {
+  const [pagina, setPagina] = useState<number>(1);
+  const [total, setTotal] = useState<number>(0);
+  const LIMITE = 10;
+
+  const cargar = (q = busqueda, pag = pagina) => {
     setCargando(true);
-    getProductosAdmin(q)
-      .then((data) => {
-        setProductos(data);
+    getProductosAdmin(q, pag, LIMITE)
+      .then((res) => {
+        setProductos(res.data);
+        setTotal(res.total);
         setError("");
       })
       .catch((err) => {
@@ -47,14 +52,16 @@ const AdminProductos = () => {
       .finally(() => setCargando(false));
   };
 
-  // Búsqueda server-side con debounce para no saturar la API
+  // Búsqueda server-side con debounce para no saturar la API; recarga también al paginar
   useEffect(() => {
     const timer = setTimeout(() => {
-      cargar(busqueda);
+      cargar(busqueda, pagina);
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busqueda]);
+  }, [busqueda, pagina]);
+
+  const paginas = Math.max(1, Math.ceil(total / LIMITE));
 
   const abrirAlta = () => {
     setForm({ ...PRODUCTO_VACIO, galeria: [] });
@@ -145,7 +152,10 @@ const AdminProductos = () => {
         <input
           type="search"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => {
+            setBusqueda(e.target.value);
+            setPagina(1);
+          }}
           placeholder="Buscar por nombre, categoría o descripción..."
           className="w-full sm:w-96 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none"
         />
@@ -261,6 +271,29 @@ const AdminProductos = () => {
           </>
         )}
       </div>
+
+      {/* Paginación */}
+      {paginas > 1 && (
+        <div className="flex items-center justify-between mt-4 text-sm">
+          <button
+            onClick={() => setPagina((p) => Math.max(1, p - 1))}
+            disabled={pagina === 1}
+            className="px-3 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+          >
+            Anterior
+          </button>
+          <span className="text-slate-500">
+            Página {pagina} de {paginas} · {total} productos
+          </span>
+          <button
+            onClick={() => setPagina((p) => Math.min(paginas, p + 1))}
+            disabled={pagina === paginas}
+            className="px-3 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       {/* ===== FORMULARIO (modal) ===== */}
       {form && (

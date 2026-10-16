@@ -30,6 +30,17 @@ type Usuario struct {
 	ReferidoID *int `json:"referido_id,omitempty"`
 }
 
+// UsuarioAdmin es la vista de una cuenta para el listado administrativo (sin contraseña).
+type UsuarioAdmin struct {
+	ID         int       `json:"id"`
+	Email      string    `json:"email"`
+	Nombre     string    `json:"nombre"`
+	Rol        string    `json:"rol"`
+	Activo     bool      `json:"activo"`
+	ReferidoID *int      `json:"referido_id,omitempty"`
+	CreadoEn   time.Time `json:"creado_en"`
+}
+
 // RegisterRequest define el cuerpo de la petición de alta de una cuenta nueva.
 type RegisterRequest struct {
 	// Nombre es el nombre visible del nuevo usuario.

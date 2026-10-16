@@ -17,6 +17,7 @@ import MisPedidos from './components/MisPedidos';
 import AdminPedidos from './components/AdminPedidos';
 import MisComisiones from './components/MisComisiones';
 import AdminLiquidaciones from './components/AdminLiquidaciones';
+import AdminUsuarios from './components/AdminUsuarios';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -79,6 +80,7 @@ function App() {
                   <Route path="admin/productos" element={<AdminProductos />} />
                   <Route path="admin/pedidos" element={<AdminPedidos />} />
                   <Route path="admin/liquidaciones" element={<AdminLiquidaciones />} />
+                  <Route path="admin/usuarios" element={<AdminUsuarios />} />
                 </Route>
 
                 {/* Ambos roles: flujo de compra en línea */}

@@ -28,14 +28,15 @@ func invalidarCacheCatalogo() {
 	}
 }
 
-// GetProductosAdmin devuelve todos los productos (activos e inactivos) con
+// GetProductosAdmin devuelve una página de productos (activos e inactivos) con
 // búsqueda server-side mediante ?q= (ILIKE sobre nombre, categoría y descripción).
 func GetProductosAdmin(c *fiber.Ctx) error {
-	productos, err := repository.ObtenerProductosAdmin(c.Query("q"))
+	pagina, limite := paginaDe(c)
+	resultado, err := repository.ObtenerProductosPagina(c.Context(), c.Query("q"), false, pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
-	return c.JSON(productos)
+	return c.JSON(resultado)
 }
 
 // CrearProducto valida y da de alta un producto del catálogo (POST /api/productos).

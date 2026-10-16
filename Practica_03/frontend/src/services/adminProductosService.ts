@@ -4,10 +4,22 @@
 import type { Producto } from "../data/productos";
 import { apiFetch } from "./http";
 
-// GET /api/admin/productos — incluye inactivos y acepta ?q= de búsqueda server-side
-export const getProductosAdmin = async (q?: string): Promise<Producto[]> => {
-  const query = q && q.trim() !== "" ? `?q=${encodeURIComponent(q.trim())}` : "";
-  return apiFetch<Producto[]>(`/api/admin/productos${query}`);
+export interface PaginaProductos {
+  data: Producto[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+// GET /api/admin/productos — paginado, incluye inactivos y acepta ?q= de búsqueda server-side
+export const getProductosAdmin = async (
+  q = "",
+  page = 1,
+  limit = 10
+): Promise<PaginaProductos> => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (q.trim() !== "") params.set("q", q.trim());
+  return apiFetch<PaginaProductos>(`/api/admin/productos?${params.toString()}`);
 };
 
 // POST /api/productos — alta (solo admin)
