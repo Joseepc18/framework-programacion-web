@@ -58,17 +58,17 @@ const Carrito = () => {
                   <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
                     <button
                       onClick={() => decrementQuantity(item.id)}
-                      className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
+                      className="min-h-11 min-w-11 px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
                       aria-label="Disminuir cantidad"
                     >
                       −
                     </button>
-                    <span className="px-3 py-2 text-sm font-semibold text-slate-800 border-x border-slate-200">
+                    <span className="flex min-h-11 min-w-11 items-center justify-center px-3 py-2 text-sm font-semibold text-slate-800 border-x border-slate-200">
                       {item.cantidad}
                     </span>
                     <button
                       onClick={() => incrementQuantity(item.id)}
-                      className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
+                      className="min-h-11 min-w-11 px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
                       aria-label="Aumentar cantidad"
                     >
                       +

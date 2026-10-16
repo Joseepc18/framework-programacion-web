@@ -149,7 +149,7 @@ const Catalogo = () => {
 
                 <button
                   onClick={() => addToCart(prod)}
-                  className="mt-auto w-full bg-slate-900 text-white py-2 rounded text-sm hover:bg-indigo-600 transition"
+                  className="mt-auto w-full min-h-11 bg-slate-900 text-white py-2 rounded text-sm hover:bg-indigo-600 transition"
                 >
                   Añadir al Carrito
                 </button>
