@@ -337,7 +337,9 @@ var (
 )
 
 // CrearPedido ejecuta una transacción ACID con FOR UPDATE para validar stock, descontarlo y registrar el pedido.
-func CrearPedido(ctx context.Context, email string, req models.CheckoutRequest) (models.PedidoConfirmado, error) {
+// CrearPedido ejecuta la compra transaccional: valida stock con FOR UPDATE,
+// descuenta inventario y asocia el pedido a la identidad del token (usuarioID).
+func CrearPedido(ctx context.Context, usuarioID *int, email string, req models.CheckoutRequest) (models.PedidoConfirmado, error) {
 	if len(req.Items) == 0 {
 		return models.PedidoConfirmado{}, ErrCarritoVacio
 	}
@@ -409,13 +411,14 @@ func CrearPedido(ctx context.Context, email string, req models.CheckoutRequest) 
 
 	numeroPedido := "MC-" + time.Now().Format("060102150405")
 
-	// Insertamos la cabecera del pedido asegurando que la identidad cliente_email provenga del token verificado
+	// Insertamos la cabecera del pedido asegurando que la identidad cliente_email
+	// provenga del token verificado y que usuario_id apunte al dueño real.
 	var pedidoID int
 	err = tx.QueryRow(ctx,
-		`INSERT INTO pedidos (numero, cliente_nombre, cliente_email, cliente_direccion, cliente_ciudad, cliente_telefono, metodo_pago, total, estado)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmado')
+		`INSERT INTO pedidos (numero, cliente_nombre, cliente_email, cliente_direccion, cliente_ciudad, cliente_telefono, metodo_pago, total, usuario_id, estado)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pendiente')
 		 RETURNING id`,
-		numeroPedido, req.Nombre, email, req.Direccion, req.Ciudad, req.Telefono, req.MetodoPago, total,
+		numeroPedido, req.Nombre, email, req.Direccion, req.Ciudad, req.Telefono, req.MetodoPago, total, usuarioID,
 	).Scan(&pedidoID)
 	if err != nil {
 		return models.PedidoConfirmado{}, err

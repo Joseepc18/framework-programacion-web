@@ -42,4 +42,15 @@ func SetupRoutes(app *fiber.App) {
 
 	// Checkout transaccional protegido: valida inventario y asigna compra a la identidad del token.
 	app.Post("/api/checkout", middleware.RequireAuth(), controllers.Checkout)
+
+	// ===== Fase 3: consulta y gestión de pedidos =====
+	// Historial propio: cada token solo recibe los pedidos de su propio usuario_id.
+	app.Get("/api/pedidos/mios", middleware.RequireAuth(), controllers.GetPedidosMios)
+
+	// Ciclo de vida de los pedidos: exclusivo del administrador.
+	app.Get("/api/pedidos", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetPedidosAdmin)
+	app.Patch("/api/pedidos/:id/estado", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.CambiarEstadoPedido)
+
+	// Detalle con líneas: lo consulta el dueño (token) o el administrador.
+	app.Get("/api/pedidos/:id", middleware.RequireAuth(), controllers.GetPedidoDetalle)
 }

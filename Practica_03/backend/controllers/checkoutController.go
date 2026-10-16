@@ -21,7 +21,7 @@ func Checkout(c *fiber.Ctx) error {
 		})
 	}
 
-	// La identidad del comprador proviene obligatoriamente del token validado por RequireAuth
+	// Identidad completa del comprador (claim sub + email) desde el token validado
 	emailAuth, ok := c.Locals("email").(string)
 	if !ok || strings.TrimSpace(emailAuth) == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
@@ -29,6 +29,9 @@ func Checkout(c *fiber.Ctx) error {
 			Message: "Sesión no válida o expirada",
 		})
 	}
+
+	// El claim sub (ID de usuario) es el dueño real que se persiste en pedidos.usuario_id
+	usuarioID, _ := c.Locals("usuario_id").(int)
 
 	if len(req.Items) == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -38,7 +41,11 @@ func Checkout(c *fiber.Ctx) error {
 	}
 
 	// Ejecutamos la transacción en el repositorio (FOR UPDATE, recálculo de precios y stock)
-	res, err := repository.CrearPedido(c.Context(), emailAuth, req)
+	var duenoID *int
+	if usuarioID > 0 {
+		duenoID = &usuarioID
+	}
+	res, err := repository.CrearPedido(c.Context(), duenoID, emailAuth, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "Stock insuficiente") ||
 			strings.Contains(err.Error(), "Producto desactivado") ||

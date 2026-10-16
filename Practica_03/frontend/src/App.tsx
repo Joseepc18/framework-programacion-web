@@ -13,6 +13,8 @@ import Confirmacion from './components/Confirmacion';
 import Login from './components/Login';
 import Registro from './components/Registro';
 import AdminProductos from './components/AdminProductos';
+import MisPedidos from './components/MisPedidos';
+import AdminPedidos from './components/AdminPedidos';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -74,6 +76,7 @@ function App() {
                   <Route index element={<Dashboard />} />
                   <Route path="mi-red" element={<MiRed />} />
                   <Route path="admin/productos" element={<AdminProductos />} />
+                  <Route path="admin/pedidos" element={<AdminPedidos />} />
                 </Route>
 
                 {/* Ambos roles: flujo de compra en línea */}
@@ -83,6 +86,8 @@ function App() {
                 <Route path="carrito" element={<Carrito />} />
                 <Route path="checkout" element={<Checkout />} />
                 <Route path="confirmacion" element={<Confirmacion />} />
+                {/* Historial propio: el backend filtra por el usuario del token */}
+                <Route path="mis-pedidos" element={<MisPedidos />} />
               </Route>
             </Route>
 

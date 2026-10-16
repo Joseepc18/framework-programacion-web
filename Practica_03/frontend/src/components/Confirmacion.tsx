@@ -23,12 +23,20 @@ const Confirmacion = () => {
         <div className="text-5xl mb-4">✅</div>
         <h1 className="text-2xl font-bold text-slate-800 mb-2">¡Gracias por tu compra!</h1>
         <p className="text-slate-500 mb-6">Tu pedido ha sido registrado correctamente.</p>
-        <Link
-          to="/tienda"
-          className="inline-block bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
-        >
-          Volver a la Tienda
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            to="/mis-pedidos"
+            className="inline-block bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition"
+          >
+            Ver mis pedidos
+          </Link>
+          <Link
+            to="/tienda"
+            className="inline-block bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
+          >
+            Volver a la Tienda
+          </Link>
+        </div>
       </div>
     );
   }
@@ -86,15 +94,20 @@ const Confirmacion = () => {
 
           <div className="flex gap-4">
             <Link
+              to="/mis-pedidos"
+              className="flex-1 text-center bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition"
+            >
+              Ver mis pedidos
+            </Link>
+            <Link
               to="/tienda"
               className="flex-1 text-center bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition"
             >
               Seguir Comprando
             </Link>
-            <Link
-              to="/catalogo"
-              className="flex-1 text-center border border-slate-300 text-slate-700 font-semibold py-3 rounded-lg hover:bg-slate-50 transition"
-            >
+          </div>
+          <div className="mt-4 text-center">
+            <Link to="/catalogo" className="text-sm text-indigo-600 hover:underline">
               Ver Catálogo
             </Link>
           </div>

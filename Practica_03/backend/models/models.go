@@ -1,6 +1,9 @@
 // Declaramos el paquete models para agrupar las estructuras de datos de la aplicación.
 package models
 
+// Importamos time para registrar la fecha de creación de cada pedido.
+import "time"
+
 // LoginRequest define la estructura esperada para el cuerpo de la petición (JSON) al iniciar sesión.
 type LoginRequest struct {
 	// Email representa el correo del usuario; la etiqueta `json:"email"` indica cómo se mapea el JSON a esta variable.
@@ -84,6 +87,66 @@ type PedidoConfirmado struct {
 	Numero   string  `json:"numero"`
 	Total    float64 `json:"total"`
 	Message  string  `json:"message"`
+}
+
+// Pedido define la cabecera de un pedido registrado en el sistema.
+type Pedido struct {
+	// ID es el identificador numérico del pedido.
+	ID int `json:"id"`
+	// Numero es el código legible generado en el checkout (MC-...).
+	Numero string `json:"numero"`
+	// ClienteNombre es el nombre de quien realizó la compra.
+	ClienteNombre string `json:"cliente_nombre"`
+	// ClienteEmail es el correo de contacto capturado en el checkout.
+	ClienteEmail string `json:"cliente_email"`
+	// ClienteDireccion, ClienteCiudad y ClienteTelefono son los datos de envío.
+	ClienteDireccion string `json:"cliente_direccion"`
+	ClienteCiudad    string `json:"cliente_ciudad"`
+	ClienteTelefono  string `json:"cliente_telefono"`
+	// MetodoPago indica la forma de pago elegida.
+	MetodoPago string `json:"metodo_pago"`
+	// Total es la suma de los subtotales de todos los ítems.
+	Total float64 `json:"total"`
+	// UsuarioID es el dueño real del pedido (claim sub del JWT).
+	UsuarioID *int `json:"usuario_id,omitempty"`
+	// Estado refleja el ciclo de vida: pendiente, preparando, enviado, entregado o cancelado.
+	Estado string `json:"estado"`
+	// CreadoEn registra la fecha y hora de alta del pedido.
+	CreadoEn time.Time `json:"creado_en"`
+}
+
+// ItemPedidoDetalle es una línea de pedido ya calculada con sus precios.
+type ItemPedidoDetalle struct {
+	// ProductoID referencia al catálogo en el momento de la compra.
+	ProductoID int `json:"producto_id"`
+	// Nombre es la denominación del producto copiada al historial.
+	Nombre string `json:"nombre"`
+	// Cantidad es el número de unidades compradas.
+	Cantidad int `json:"cantidad"`
+	// PrecioUnitario es el precio vigente al comprar (no el actual).
+	PrecioUnitario float64 `json:"precio_unitario"`
+	// Subtotal es precio_unitario por cantidad.
+	Subtotal float64 `json:"subtotal"`
+}
+
+// PedidoDetalle agrupa la cabecera del pedido con sus líneas (JOIN con pedido_items).
+type PedidoDetalle struct {
+	// Pedido contiene los datos de cabecera.
+	Pedido
+	// Items es el detalle de productos del pedido.
+	Items []ItemPedidoDetalle `json:"items"`
+}
+
+// Pagina estandariza la respuesta paginada de todos los listados de la API.
+type Pagina struct {
+	// Data es la colección de la página actual.
+	Data interface{} `json:"data"`
+	// Page es la página solicitada (comienza en 1).
+	Page int `json:"page"`
+	// Limit es el tamaño de página aplicado.
+	Limit int `json:"limit"`
+	// Total es el número total de registros disponibles.
+	Total int `json:"total"`
 }
 
 // Referido define un nodo del árbol de la red multinivel.
