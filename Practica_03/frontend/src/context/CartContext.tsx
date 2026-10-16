@@ -27,6 +27,7 @@ const CART_STORAGE_PREFIX = "multicatalogo_carrito_";
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // 4. Hook personalizado con validación de tipo
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {

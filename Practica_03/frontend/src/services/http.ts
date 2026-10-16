@@ -56,7 +56,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
 
   // Manejo de respuestas no exitosas (4xx, 5xx)
   if (!response.ok) {
-    let errorData: Partial<ApiErrorPayload> = {};
+    let errorData: Partial<ApiErrorPayload>;
     try {
       errorData = await response.json();
     } catch {

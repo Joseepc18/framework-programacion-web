@@ -15,16 +15,20 @@ const AdminLiquidaciones = () => {
   const [historico, setHistorico] = useState<Liquidacion[]>([]);
   const [pagina, setPagina] = useState<number>(1);
   const [totalPagos, setTotalPagos] = useState<number>(0);
-  const [cargando, setCargando] = useState<boolean>(true);
+  // `version` fuerza una recarga tras liquidar; la carga se deriva de la clave pedida
+  // frente a la última cargada, sin setState síncrono en el efecto.
+  const [version, setVersion] = useState<number>(0);
+  const [claveCargada, setClaveCargada] = useState<string>("");
+  const clave = `${pagina}|${version}`;
+  const cargando = claveCargada !== clave;
   const [error, setError] = useState<string>("");
   const [liquiando, setLiquiando] = useState<number | null>(null);
 
   const LIMITE = 10;
 
   // Carga la deuda y el histórico en paralelo: son lecturas independientes
-  const cargar = (pag: number) => {
-    setCargando(true);
-    Promise.all([getDeudas(), getLiquidaciones(pag, LIMITE)])
+  useEffect(() => {
+    Promise.all([getDeudas(), getLiquidaciones(pagina, LIMITE)])
       .then(([deudasRes, pagosRes]) => {
         setDeudas(deudasRes);
         setHistorico(pagosRes.data);
@@ -32,13 +36,8 @@ const AdminLiquidaciones = () => {
         setError("");
       })
       .catch((err) => setError(err.message || "No se pudo cargar el módulo"))
-      .finally(() => setCargando(false));
-  };
-
-  useEffect(() => {
-    cargar(pagina);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagina]);
+      .finally(() => setClaveCargada(`${pagina}|${version}`));
+  }, [pagina, version]);
 
   // Liquida el saldo completo de un distribuidor con confirmación previa
   const liquidar = (d: Deuda) => {
@@ -49,7 +48,7 @@ const AdminLiquidaciones = () => {
     liquidarDistribuidor(d.referido_id)
       .then(() => {
         setPagina(1);
-        cargar(1);
+        setVersion((v) => v + 1);
       })
       .catch((err) => {
         window.alert(err.message || "No se pudo realizar la liquidación");

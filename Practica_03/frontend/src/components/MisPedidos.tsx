@@ -42,7 +42,9 @@ const MisPedidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [pagina, setPagina] = useState<number>(1);
-  const [cargando, setCargando] = useState<boolean>(true);
+  // La carga se deriva de la clave pedida frente a la última cargada: sin setState síncrono en el efecto.
+  const [claveCargada, setClaveCargada] = useState<string>("");
+  const cargando = claveCargada !== String(pagina);
   const [error, setError] = useState<string>("");
 
   // Detalle expandible: id del pedido abierto y su información cargada
@@ -53,7 +55,6 @@ const MisPedidos = () => {
   const LIMITE = 10;
 
   useEffect(() => {
-    setCargando(true);
     getMisPedidos(pagina, LIMITE)
       .then((res) => {
         setPedidos(res.data);
@@ -61,7 +62,7 @@ const MisPedidos = () => {
         setError("");
       })
       .catch((err) => setError(err.message || "No se pudo cargar tus pedidos"))
-      .finally(() => setCargando(false));
+      .finally(() => setClaveCargada(String(pagina)));
   }, [pagina]);
 
   // Alterna el detalle expandible de un pedido (lo carga solo la primera vez)

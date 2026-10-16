@@ -44,7 +44,9 @@ const AdminPedidos = () => {
   const [total, setTotal] = useState<number>(0);
   const [pagina, setPagina] = useState<number>(1);
   const [filtro, setFiltro] = useState<string>("");
-  const [cargando, setCargando] = useState<boolean>(true);
+  // La carga se deriva de la clave pedida frente a la última cargada: sin setState síncrono en el efecto.
+  const [claveCargada, setClaveCargada] = useState<string>("");
+  const cargando = claveCargada !== `${pagina}|${filtro}`;
   const [error, setError] = useState<string>("");
 
   const [abierto, setAbierto] = useState<number | null>(null);
@@ -55,7 +57,6 @@ const AdminPedidos = () => {
 
   // Recarga al cambiar la página o el filtro de estado
   useEffect(() => {
-    setCargando(true);
     getPedidosAdmin(filtro, pagina, LIMITE)
       .then((res) => {
         setPedidos(res.data);
@@ -63,7 +64,7 @@ const AdminPedidos = () => {
         setError("");
       })
       .catch((err) => setError(err.message || "No se pudo cargar los pedidos"))
-      .finally(() => setCargando(false));
+      .finally(() => setClaveCargada(`${pagina}|${filtro}`));
   }, [pagina, filtro]);
 
   const cambiarFiltro = (valor: string) => {
