@@ -6,6 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// Importamos nuestro paquete de controladores, donde residen las funciones que se ejecutarán en cada ruta.
 	"multicatalogo-backend/controllers"
+	// Importamos el middleware de autenticación para proteger rutas sensibles.
+	"multicatalogo-backend/middleware"
 )
 
 // SetupRoutes es una función que recibe un puntero a la aplicación Fiber (*fiber.App) para inyectarle las rutas.
@@ -19,9 +21,13 @@ func SetupRoutes(app *fiber.App) {
 	// Definimos una ruta HTTP GET en "/api/productos/:id" para obtener un producto por su ID.
 	app.Get("/api/productos/:id", controllers.GetProductoPorID)
 
-	// Definimos una ruta HTTP GET en "/api/red" para obtener el árbol de la red multinivel.
-	app.Get("/api/red", controllers.GetRed)
-
 	// Definimos una ruta HTTP GET en "/api/health" para verificar que el servidor está operativo.
 	app.Get("/api/health", controllers.HealthCheck)
+
+	// Rutas protegidas mediante JWT (RequireAuth)
+	// Árbol de referidos protegido: solo usuarios autenticados pueden consultarlo.
+	app.Get("/api/red", middleware.RequireAuth(), controllers.GetRed)
+
+	// Checkout transaccional protegido: valida inventario y asigna compra a la identidad del token.
+	app.Post("/api/checkout", middleware.RequireAuth(), controllers.Checkout)
 }

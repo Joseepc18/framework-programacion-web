@@ -2,7 +2,9 @@
 // Red multinivel visual (Tema 5):
 // - Resumen: referidos activos, ventas de la red, comisiones del mes y nivel alcanzado
 // - Árbol jerárquico recursivo de referidos con comisión calculada por nivel
+import { useState, useEffect } from 'react';
 import { redInicial, contarRed, sumarVentasRed, sumarComisiones, nivelAlcanzado, comisionDeReferido, TASA_COMISION, type Referido } from '../data/red';
+import { getRed } from '../services/redService';
 
 // Colores y etiquetas por nivel para el árbol
 const NIVEL_ESTILO: Record<number, { badge: string; border: string; tasa: string }> = {
@@ -12,7 +14,6 @@ const NIVEL_ESTILO: Record<number, { badge: string; border: string; tasa: string
 };
 
 // Componente recursivo: renderiza un referido y, debajo, a sus hijos
-// Nota: la prop se llama "nodo" porque "ref" es una prop reservada en React 19
 const NodoReferido = ({ nodo }: { nodo: Referido }) => {
   const estilo = NIVEL_ESTILO[nodo.nivel] ?? NIVEL_ESTILO[1];
   const comision = comisionDeReferido(nodo);
@@ -53,11 +54,29 @@ const NodoReferido = ({ nodo }: { nodo: Referido }) => {
 };
 
 const MiRed = () => {
-  // KPIs derivados de los datos de la red (funciones puras en data/red.ts)
-  const referidosActivos = contarRed(redInicial);
-  const ventasRed = sumarVentasRed(redInicial);
-  const comisionesMes = sumarComisiones(redInicial);
-  const nivel = nivelAlcanzado(redInicial.hijos?.length ?? 0);
+  const [red, setRed] = useState<Referido>(redInicial);
+  const [cargando, setCargando] = useState<boolean>(true);
+
+  useEffect(() => {
+    getRed()
+      .then((data) => {
+        if (data && data.nombre) {
+          setRed(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("No se pudo cargar la red desde el servidor, usando datos locales:", err);
+      })
+      .finally(() => {
+        setCargando(false);
+      });
+  }, []);
+
+  // KPIs derivados de los datos de la red
+  const referidosActivos = contarRed(red);
+  const ventasRed = sumarVentasRed(red);
+  const comisionesMes = sumarComisiones(red);
+  const nivel = nivelAlcanzado(red.hijos?.length ?? 0);
 
   const resumen = [
     { etiqueta: "Referidos Activos", valor: referidosActivos.toString(), color: "text-indigo-600" },
@@ -85,16 +104,18 @@ const MiRed = () => {
 
       {/* ===== ÁRBOL DE REFERIDOS ===== */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Jerarquía de tu Red</h2>
+        <h2 className="text-lg font-bold text-slate-800 mb-4">
+          Jerarquía de tu Red {cargando && <span className="text-xs text-slate-400 font-normal">(actualizando...)</span>}
+        </h2>
 
         {/* Raíz: el usuario */}
         <div className="bg-slate-900 text-white rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold">
-              {redInicial.nombre.charAt(0)}
+              {red.nombre.charAt(0)}
             </div>
             <div>
-              <p className="font-semibold">{redInicial.nombre}</p>
+              <p className="font-semibold">{red.nombre}</p>
               <p className="text-xs text-slate-300">Nivel alcanzado: {nivel}</p>
             </div>
           </div>
@@ -104,7 +125,7 @@ const MiRed = () => {
         </div>
 
         <ul className="space-y-3">
-          {redInicial.hijos?.map((hijo) => (
+          {red.hijos?.map((hijo) => (
             <NodoReferido key={hijo.id} nodo={hijo} />
           ))}
         </ul>

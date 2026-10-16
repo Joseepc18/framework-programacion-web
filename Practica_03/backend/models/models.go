@@ -37,6 +37,33 @@ type Producto struct {
 	Img string `json:"img"`
 	// Galeria contiene las URLs de las imágenes adicionales del producto.
 	Galeria []string `json:"galeria"`
+	// Stock indica la cantidad disponible en inventario.
+	Stock int `json:"stock"`
+}
+
+// ItemPedido representa un producto y su cantidad dentro del checkout.
+type ItemPedido struct {
+	ProductoID int `json:"producto_id"`
+	Cantidad   int `json:"cantidad"`
+}
+
+// CheckoutRequest define la petición de compra.
+type CheckoutRequest struct {
+	Nombre      string       `json:"nombre"`
+	Email       string       `json:"email"`
+	Direccion   string       `json:"direccion"`
+	Ciudad      string       `json:"ciudad"`
+	Telefono    string       `json:"telefono"`
+	MetodoPago  string       `json:"metodoPago"`
+	Items       []ItemPedido `json:"items"`
+}
+
+// PedidoConfirmado es la respuesta exitosa tras el checkout transaccional.
+type PedidoConfirmado struct {
+	PedidoID int     `json:"pedido_id"`
+	Numero   string  `json:"numero"`
+	Total    float64 `json:"total"`
+	Message  string  `json:"message"`
 }
 
 // Referido define un nodo del árbol de la red multinivel.

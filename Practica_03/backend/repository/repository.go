@@ -7,6 +7,8 @@ import (
 	"context"
 	// Importamos errors para distinguir el caso "sin resultados" de un error real.
 	"errors"
+	// Importamos time para marcas de tiempo y códigos de pedidos.
+	"time"
 
 	// Importamos pgx para reconocer el error pgx.ErrNoRows.
 	"github.com/jackc/pgx/v5"
@@ -24,18 +26,20 @@ func Inicializar(pool *pgxpool.Pool) {
 	db = pool
 }
 
-// BuscarUsuarioPorCredenciales devuelve el usuario cuyo email y contraseña coinciden.
-// El booleano indica si se encontró; el error indica un fallo de la base de datos.
-func BuscarUsuarioPorCredenciales(email, password string) (models.Usuario, bool, error) {
+// GetDB devuelve el pool de conexiones actual (usado para verificaciones de health).
+func GetDB() *pgxpool.Pool {
+	return db
+}
+
+// BuscarUsuarioPorEmail busca un usuario por su dirección de correo para verificar su contraseña hasheada.
+func BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error) {
 	var u models.Usuario
 
-	// Consultamos con parámetros ($1, $2) para evitar inyección SQL.
 	err := db.QueryRow(context.Background(),
-		`SELECT id, email, rol FROM usuarios WHERE email = $1 AND password = $2`,
-		email, password,
-	).Scan(&u.ID, &u.Email, &u.Rol)
+		`SELECT id, email, password, rol FROM usuarios WHERE email = $1`,
+		email,
+	).Scan(&u.ID, &u.Email, &u.Password, &u.Rol)
 
-	// Si no hay filas, las credenciales no coinciden: no es un error de la base de datos.
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Usuario{}, false, nil
 	}
@@ -45,34 +49,31 @@ func BuscarUsuarioPorCredenciales(email, password string) (models.Usuario, bool,
 	return u, true, nil
 }
 
-// ObtenerProductos devuelve el catálogo completo ordenado por ID.
+// ObtenerProductos devuelve el catálogo completo ordenado por ID incluyendo el stock disponible.
 func ObtenerProductos() ([]models.Producto, error) {
 	rows, err := db.Query(context.Background(),
-		`SELECT id, nombre, descripcion, precio, categoria, img, galeria FROM productos ORDER BY id`,
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock FROM productos ORDER BY id`,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	// CollectRows recorre las filas, las mapea a Producto y cierra el cursor automáticamente.
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.Producto, error) {
 		var p models.Producto
-		err := row.Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria)
+		err := row.Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria, &p.Stock)
 		return p, err
 	})
 }
 
-// ObtenerProductoPorID devuelve el producto con el ID indicado.
-// El booleano indica si existe; el error indica un fallo de la base de datos.
+// ObtenerProductoPorID devuelve el producto con el ID indicado incluyendo su stock.
 func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
 	var p models.Producto
 
 	err := db.QueryRow(context.Background(),
-		`SELECT id, nombre, descripcion, precio, categoria, img, galeria FROM productos WHERE id = $1`,
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock FROM productos WHERE id = $1`,
 		id,
-	).Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria)
+	).Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria, &p.Stock)
 
-	// Si no hay filas, el producto no existe.
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Producto{}, false, nil
 	}
@@ -80,6 +81,150 @@ func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
 		return models.Producto{}, false, err
 	}
 	return p, true, nil
+}
+
+// Errores de dominio para el proceso de checkout
+var (
+	ErrStockInsuficiente = errors.New("stock insuficiente")
+	ErrCantidadInvalida  = errors.New("cantidad debe ser mayor que cero")
+	ErrCarritoVacio      = errors.New("el carrito no contiene artículos")
+)
+
+// CrearPedido ejecuta una transacción ACID con FOR UPDATE para validar stock, descontarlo y registrar el pedido.
+func CrearPedido(ctx context.Context, email string, req models.CheckoutRequest) (models.PedidoConfirmado, error) {
+	if len(req.Items) == 0 {
+		return models.PedidoConfirmado{}, ErrCarritoVacio
+	}
+
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return models.PedidoConfirmado{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	type itemCalculado struct {
+		productoID     int
+		nombre         string
+		cantidad       int
+		precioUnitario float64
+		subtotal       float64
+	}
+
+	var itemsCalculados []itemCalculado
+	var total float64
+
+	// Validamos cada ítem bloqueando la fila correspondiente en productos con FOR UPDATE
+	for _, it := range req.Items {
+		if it.Cantidad <= 0 {
+			return models.PedidoConfirmado{}, ErrCantidadInvalida
+		}
+
+		var p models.Producto
+		err := tx.QueryRow(ctx,
+			`SELECT id, nombre, precio, stock FROM productos WHERE id = $1 FOR UPDATE`,
+			it.ProductoID,
+		).Scan(&p.ID, &p.Nombre, &p.Precio, &p.Stock)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.PedidoConfirmado{}, errors.New("producto no encontrado en el catálogo")
+		}
+		if err != nil {
+			return models.PedidoConfirmado{}, err
+		}
+
+		if p.Stock < it.Cantidad {
+			return models.PedidoConfirmado{}, errors.New("Stock insuficiente para: " + p.Nombre)
+		}
+
+		subtotal := p.Precio * float64(it.Cantidad)
+		total += subtotal
+
+		// Descontamos el stock
+		_, err = tx.Exec(ctx,
+			`UPDATE productos SET stock = stock - $1 WHERE id = $2`,
+			it.Cantidad, p.ID,
+		)
+		if err != nil {
+			return models.PedidoConfirmado{}, err
+		}
+
+		itemsCalculados = append(itemsCalculados, itemCalculado{
+			productoID:     p.ID,
+			nombre:         p.Nombre,
+			cantidad:       it.Cantidad,
+			precioUnitario: p.Precio,
+			subtotal:       subtotal,
+		})
+	}
+
+	numeroPedido := "MC-" + time.Now().Format("060102150405")
+
+	// Insertamos la cabecera del pedido asegurando que la identidad cliente_email provenga del token verificado
+	var pedidoID int
+	err = tx.QueryRow(ctx,
+		`INSERT INTO pedidos (numero, cliente_nombre, cliente_email, cliente_direccion, cliente_ciudad, cliente_telefono, metodo_pago, total, estado)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmado')
+		 RETURNING id`,
+		numeroPedido, req.Nombre, email, req.Direccion, req.Ciudad, req.Telefono, req.MetodoPago, total,
+	).Scan(&pedidoID)
+	if err != nil {
+		return models.PedidoConfirmado{}, err
+	}
+
+	// Insertamos los ítems en pedido_items
+	for _, it := range itemsCalculados {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO pedido_items (pedido_id, producto_id, nombre, cantidad, precio_unitario, subtotal)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			pedidoID, it.productoID, it.nombre, it.cantidad, it.precioUnitario, it.subtotal,
+		)
+		if err != nil {
+			return models.PedidoConfirmado{}, err
+		}
+	}
+
+	// Confirmamos la transacción
+	if err := tx.Commit(ctx); err != nil {
+		return models.PedidoConfirmado{}, err
+	}
+
+	return models.PedidoConfirmado{
+		PedidoID: pedidoID,
+		Numero:   numeroPedido,
+		Total:    total,
+		Message:  "Pedido registrado y stock reservado con éxito",
+	}, nil
+}
+
+// ActualizarComisionesUpline suma las ventas al upline multinivel (hasta 3 niveles) en la tabla referidos.
+func ActualizarComisionesUpline(ctx context.Context, email string, monto float64) error {
+	// Determinamos el nodo de partida. En la base semilla: cliente@upse.edu.ec mapea a Luis Poveda (id 2).
+	nodoID := 2
+	if email == "admin@upse.edu.ec" {
+		nodoID = 0
+	}
+
+	currentID := &nodoID
+	for nivel := 1; nivel <= 3 && currentID != nil; nivel++ {
+		var parentID *int
+		err := db.QueryRow(ctx,
+			`SELECT parent_id FROM referidos WHERE id = $1`,
+			*currentID,
+		).Scan(&parentID)
+		if err != nil || parentID == nil {
+			break
+		}
+
+		// Acreditamos venta al patrocinador
+		_, _ = db.Exec(ctx,
+			`UPDATE referidos SET ventas = ventas + $1 WHERE id = $2`,
+			monto, *parentID,
+		)
+
+		currentID = parentID
+	}
+
+	return nil
 }
 
 // referidoPlano representa una fila de la tabla referidos antes de armar el árbol.

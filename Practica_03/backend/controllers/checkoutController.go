@@ -1,0 +1,68 @@
+// Declaramos el paquete controllers para la gestión del endpoint de compras.
+package controllers
+
+import (
+	"context"
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+	"multicatalogo-backend/config"
+	"multicatalogo-backend/models"
+	"multicatalogo-backend/repository"
+)
+
+// Checkout maneja la compra transaccional validando stock e identidad obtenida del JWT.
+func Checkout(c *fiber.Ctx) error {
+	var req models.CheckoutRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
+			Status:  fiber.StatusBadRequest,
+			Message: "Cuerpo de petición inválido",
+		})
+	}
+
+	// La identidad del comprador proviene obligatoriamente del token validado por RequireAuth
+	emailAuth, ok := c.Locals("email").(string)
+	if !ok || strings.TrimSpace(emailAuth) == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
+			Status:  fiber.StatusUnauthorized,
+			Message: "Sesión no válida o expirada",
+		})
+	}
+
+	if len(req.Items) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
+			Status:  fiber.StatusBadRequest,
+			Message: "El pedido debe contener al menos un producto",
+		})
+	}
+
+	// Ejecutamos la transacción en el repositorio (FOR UPDATE, recálculo de precios y stock)
+	res, err := repository.CrearPedido(c.Context(), emailAuth, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "Stock insuficiente") ||
+			err == repository.ErrStockInsuficiente ||
+			err == repository.ErrCantidadInvalida ||
+			err == repository.ErrCarritoVacio {
+			return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
+				Status:  fiber.StatusBadRequest,
+				Message: err.Error(),
+			})
+		}
+		return errorInterno(c, err)
+	}
+
+	// Invalidamos la caché en Redis tras la mutación de inventario
+	if config.Cache != nil {
+		_ = config.Cache.Del(context.Background(), "productos:all").Err()
+		_ = config.Cache.Del(context.Background(), "red:tree:"+emailAuth).Err()
+	}
+
+	// Disparamos la actualización del upline en una goroutine con contexto propio
+	go func(email string, total float64) {
+		ctx := context.Background()
+		_ = repository.ActualizarComisionesUpline(ctx, email, total)
+	}(emailAuth, res.Total)
+
+	return c.Status(fiber.StatusCreated).JSON(res)
+}
