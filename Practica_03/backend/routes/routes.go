@@ -60,4 +60,13 @@ func SetupRoutes(app *fiber.App) {
 
 	// Ledger de comisiones del usuario: totales pendiente y pagado incluidos.
 	app.Get("/api/comisiones/mias", middleware.RequireAuth(), controllers.GetComisionesMias)
+
+	// ===== Fase 5: liquidaciones a distribuidores =====
+	// Deuda por distribuidor y histórico de pagos: exclusivos del admin.
+	app.Get("/api/liquidaciones/deudas", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetDeudas)
+	app.Post("/api/liquidaciones", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.CrearLiquidacion)
+	app.Get("/api/liquidaciones", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetLiquidaciones)
+
+	// Cada distribuidor consulta sus propios cobros con su token.
+	app.Get("/api/liquidaciones/mias", middleware.RequireAuth(), controllers.GetLiquidacionesMias)
 }

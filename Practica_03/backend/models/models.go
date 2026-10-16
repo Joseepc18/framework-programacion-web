@@ -194,6 +194,40 @@ type RedPropia struct {
 	ReferidoID int `json:"referido_id"`
 }
 
+// Liquidacion agrupa un pago a un distribuidor: qué nodo cobró, cuánto y cuándo.
+type Liquidacion struct {
+	// ID es el identificador del pago.
+	ID int `json:"id"`
+	// ReferidoID es el nodo de la red que recibió el pago.
+	ReferidoID int `json:"referido_id"`
+	// Nombre es el nombre visible del distribuidor (JOIN con referidos).
+	Nombre string `json:"nombre"`
+	// Total es la suma de las comisiones liquidadas en este pago.
+	Total float64 `json:"total"`
+	// Estado es pendiente o pagada.
+	Estado string `json:"estado"`
+	// CreadoEn registra cuándo se creó la liquidación.
+	CreadoEn time.Time `json:"creado_en"`
+	// PagadaEn es el momento del pago efectivo (null si sigue pendiente).
+	PagadaEn *time.Time `json:"pagada_en,omitempty"`
+	// CantidadComisiones indica cuántas filas del ledger cubrió este pago.
+	CantidadComisiones int `json:"cantidad_comisiones"`
+}
+
+// DeudaComisiones resume lo que un distribuidor tiene pendiente de cobro.
+type DeudaComisiones struct {
+	// ReferidoID es el nodo deudor.
+	ReferidoID int `json:"referido_id"`
+	// Nombre es el nombre del distribuidor.
+	Nombre string `json:"nombre"`
+	// Email es la cuenta real asociada al nodo (vacío si no tiene).
+	Email string `json:"email"`
+	// Pendiente es la suma de comisiones en estado pendiente.
+	Pendiente float64 `json:"pendiente"`
+	// Cantidad es el número de filas pendientes.
+	Cantidad int `json:"cantidad"`
+}
+
 // Referido define un nodo del árbol de la red multinivel.
 type Referido struct {
 	// ID es el identificador único del referido.
