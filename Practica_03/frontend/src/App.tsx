@@ -11,6 +11,13 @@ import Carrito from './components/Carrito';
 import Checkout from './components/Checkout';
 import Confirmacion from './components/Confirmacion';
 import Login from './components/Login';
+import Registro from './components/Registro';
+import AdminProductos from './components/AdminProductos';
+import MisPedidos from './components/MisPedidos';
+import AdminPedidos from './components/AdminPedidos';
+import MisComisiones from './components/MisComisiones';
+import AdminLiquidaciones from './components/AdminLiquidaciones';
+import AdminUsuarios from './components/AdminUsuarios';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -60,8 +67,9 @@ function App() {
       <CartBoundary> {/* Proveedor del Carrito (uno por usuario) */}
         <BrowserRouter>
           <Routes>
-            {/* Ruta pública */}
+            {/* Rutas públicas */}
             <Route path="/login" element={<Login />} />
+            <Route path="/registro" element={<Registro />} />
 
             {/* Rutas protegidas (requieren login) */}
             <Route element={<ProtectedRoute />}>
@@ -69,7 +77,10 @@ function App() {
                 {/* Solo administrador: Dashboard y Red multinivel */}
                 <Route element={<AdminRoute />}>
                   <Route index element={<Dashboard />} />
-                  <Route path="mi-red" element={<MiRed />} />
+                  <Route path="admin/productos" element={<AdminProductos />} />
+                  <Route path="admin/pedidos" element={<AdminPedidos />} />
+                  <Route path="admin/liquidaciones" element={<AdminLiquidaciones />} />
+                  <Route path="admin/usuarios" element={<AdminUsuarios />} />
                 </Route>
 
                 {/* Ambos roles: flujo de compra en línea */}
@@ -79,6 +90,11 @@ function App() {
                 <Route path="carrito" element={<Carrito />} />
                 <Route path="checkout" element={<Checkout />} />
                 <Route path="confirmacion" element={<Confirmacion />} />
+                {/* Historial propio: el backend filtra por el usuario del token */}
+                <Route path="mis-pedidos" element={<MisPedidos />} />
+                {/* Red y ledger propios: cada cuenta ve SU subárbol y SU ledger */}
+                <Route path="mi-red" element={<MiRed />} />
+                <Route path="comisiones" element={<MisComisiones />} />
               </Route>
             </Route>
 

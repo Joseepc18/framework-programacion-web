@@ -87,3 +87,8 @@ func (r *Redis) Eliminar(ctx context.Context, claves ...string) {
 func (r *Redis) Cerrar() error {
 	return r.cliente.Close()
 }
+
+// Ping comprueba que Redis responde (lo usa el health check).
+func (r *Redis) Ping(ctx context.Context) error {
+	return r.cliente.Ping(ctx).Err()
+}

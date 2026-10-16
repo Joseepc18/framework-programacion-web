@@ -11,6 +11,8 @@ export interface Producto {
   categoria: string;
   img: string;        // Imagen principal (portada)
   galeria: string[];  // Imágenes adicionales para la galería/lightbox
+  stock?: number;     // Disponibilidad en inventario (la envía la API)
+  activo?: boolean;   // Borrado lógico del catálogo (la envía la API)
 }
 
 // Lista de categorías derivada de los productos (se usa para los filtros)

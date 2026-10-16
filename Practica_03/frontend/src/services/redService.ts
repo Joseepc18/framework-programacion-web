@@ -1,15 +1,20 @@
 // src/services/redService.ts
-// Capa de servicios de la red multinivel.
-// Consume GET /api/red del backend (Go + Fiber), que reconstruye el árbol desde PostgreSQL
-// y lo sirve desde la caché de Redis.
+// Capa de servicio para la red multinivel (MLM) protegida por JWT.
 import type { Referido } from "../data/red";
+import { apiFetch } from "./http";
 
-const API_URL = "http://localhost:3000/api";
+// Respuesta de /api/red/mia: el subárbol propio y el código de invitación.
+export interface RedMia {
+  red: Referido | null;
+  codigo: string;
+  referido_id: number;
+}
 
-// GET /api/red (el email identifica la clave de caché red:tree:{email} del usuario)
-export const getRed = async (email?: string): Promise<Referido> => {
-  const url = email ? `${API_URL}/red?email=${encodeURIComponent(email)}` : `${API_URL}/red`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("No se pudo cargar la red multinivel");
-  return response.json();
+export const getRed = async (): Promise<Referido> => {
+  return apiFetch<Referido>("/api/red");
+};
+
+// GET /api/red/mia — subárbol que cuelga del nodo del usuario del token.
+export const getRedMia = async (): Promise<RedMia> => {
+  return apiFetch<RedMia>("/api/red/mia");
 };

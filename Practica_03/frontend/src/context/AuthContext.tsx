@@ -10,10 +10,16 @@ export interface Usuario {
   rol: Rol;
 }
 
+interface SesionGuardada {
+  user: Usuario;
+  token: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: Usuario | null;
-  login: (usuario: Usuario) => void;
+  token: string | null;
+  login: (usuario: Usuario, token: string) => void;
   logout: () => void;
 }
 
@@ -31,22 +37,47 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<Usuario | null>(null);
+const STORAGE_KEY = 'multicatalogo_sesion';
 
-  const login = (usuario: Usuario) => {
-    setIsAuthenticated(true);
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [user, setUser] = useState<Usuario | null>(() => {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (!data) return null;
+      const parsed: SesionGuardada = JSON.parse(data);
+      return parsed.user || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (!data) return null;
+      const parsed: SesionGuardada = JSON.parse(data);
+      return parsed.token || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAuthenticated = Boolean(user && token);
+
+  const login = (usuario: Usuario, jwtToken: string) => {
     setUser(usuario);
+    setToken(jwtToken);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: usuario, token: jwtToken }));
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
     setUser(null);
+    setToken(null);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

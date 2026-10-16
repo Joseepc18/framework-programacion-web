@@ -1,8 +1,9 @@
 // src/services/checkoutService.ts
 // Capa de servicios del checkout.
-// Envía el pedido a POST /api/checkout, donde el backend lo guarda en una transacción ACID.
+// Envía el pedido a POST /api/checkout (JWT automático): el backend valida stock, recalcula precios
+// y guarda pedido, ítems y comisiones en una única transacción ACID.
+import { apiFetch } from "./http";
 
-const API_URL = "http://localhost:3000/api";
 
 // Datos del formulario de envío
 export interface DatosCliente {
@@ -41,19 +42,33 @@ export interface PedidoConfirmado {
   items: ItemPedido[];
 }
 
-// POST /api/checkout (registra la compra y dispara las comisiones en segundo plano)
+// Respuesta cruda de POST /api/checkout.
+interface RespuestaCheckout {
+  pedido_id: number;
+  numero: string;
+  total: number;
+  message: string;
+}
+
+// El backend toma la identidad del token y recalcula los precios: solo viajan producto_id y cantidad.
 export const procesarCheckout = async (pedido: PedidoRequest): Promise<PedidoConfirmado> => {
-  const response = await fetch(`${API_URL}/checkout`, {
+  const res = await apiFetch<RespuestaCheckout>("/api/checkout", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(pedido),
+    body: JSON.stringify({
+      ...pedido.cliente,
+      metodoPago: pedido.metodoPago,
+      items: pedido.items.map((i) => ({ producto_id: i.id, cantidad: i.cantidad })),
+    }),
   });
 
-  // Si la transacción falló, el backend responde APIError con el motivo: lo mostramos tal cual.
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.message ?? "No se pudo procesar el pedido");
-  }
-
-  return response.json();
+  return {
+    id: res.pedido_id,
+    numero: res.numero,
+    estado: "pendiente",
+    total: res.total,
+    fecha: new Date().toLocaleString("es-EC"),
+    metodoPago: pedido.metodoPago,
+    cliente: pedido.cliente,
+    items: pedido.items,
+  };
 };

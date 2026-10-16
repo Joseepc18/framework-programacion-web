@@ -4,21 +4,22 @@
 // Los componentes no cambian: siguen recibiendo Promise<Producto[]> y Promise<Producto | undefined>.
 
 import type { Producto } from "../data/productos";
-
-const API_URL = "http://localhost:3000/api";
+import { apiFetch, ApiError } from "./http";
 
 // GET /api/productos (lista completa)
 export const getProductos = async (): Promise<Producto[]> => {
-  const response = await fetch(`${API_URL}/productos`);
-  if (!response.ok) throw new Error("No se pudo cargar el catálogo");
-  return response.json();
+  return apiFetch<Producto[]>("/api/productos");
 };
 
 // GET /api/productos/:id (detalle de un producto)
-// Un 404 significa que el producto no existe: devolvemos undefined, como hacía el mock.
+// Un 404 significa que el producto no existe: devolvemos undefined.
 export const getProductoById = async (id: number): Promise<Producto | undefined> => {
-  const response = await fetch(`${API_URL}/productos/${id}`);
-  if (response.status === 404) return undefined;
-  if (!response.ok) throw new Error("No se pudo cargar el producto");
-  return response.json();
+  try {
+    return await apiFetch<Producto>(`/api/productos/${id}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return undefined;
+    }
+    throw error;
+  }
 };

@@ -50,11 +50,15 @@ func main() {
 
 	// ...y se las pasamos a cada controlador, que solo conoce las interfaces que necesita.
 	manejadores := routes.Manejadores{
-		Auth:      controllers.NuevoAuthController(repositorio),
-		Productos: controllers.NuevoProductoController(repositorio, almacen),
-		Red:       controllers.NuevoRedController(repositorio, almacen),
-		Checkout:  controllers.NuevoCheckoutController(repositorio, almacen),
-		Health:    controllers.NuevoHealthController(),
+		Auth:          controllers.NuevoAuthController(repositorio),
+		Productos:     controllers.NuevoProductoController(repositorio, almacen),
+		Red:           controllers.NuevoRedController(repositorio, almacen),
+		Checkout:      controllers.NuevoCheckoutController(repositorio, almacen),
+		Health:        controllers.NuevoHealthController(repositorio, almacen),
+		Pedidos:       controllers.NuevoPedidoController(repositorio, almacen),
+		Liquidaciones: controllers.NuevoLiquidacionController(repositorio),
+		Reportes:      controllers.NuevoReporteController(repositorio),
+		Usuarios:      controllers.NuevoUsuarioController(repositorio),
 	}
 
 	// Instanciamos una nueva aplicación de Fiber y la guardamos en la variable 'app'.
@@ -62,10 +66,10 @@ func main() {
 
 	// Implementamos el middleware CORS a nivel global usando app.Use() para interceptar todas las peticiones entrantes.
 	app.Use(cors.New(cors.Config{
-		// Configuramos el CORS para permitir únicamente peticiones provenientes del frontend local en el puerto 5173.
-		AllowOrigins: "http://localhost:5173",
-		// Declaramos de forma explícita qué cabeceras (Headers) se permitirán en la comunicación.
-		AllowHeaders: "Origin, Content-Type, Accept",
+		// Configuramos el CORS para permitir peticiones provenientes del frontend local.
+		AllowOrigins: "http://localhost:5173, http://127.0.0.1:5173",
+		// Declaramos de forma explícita qué cabeceras se permitirán, incluyendo Authorization para el token JWT.
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
 	// Llamamos a la función SetupRoutes de nuestro paquete 'routes', enviándole la instancia de 'app'
@@ -81,8 +85,12 @@ func main() {
 		_ = app.Shutdown()
 	}()
 
-	// Ponemos a la aplicación a escuchar peticiones en el puerto 3000 de la máquina local. (Bloquea el hilo de ejecución).
-	if err := app.Listen(":3000"); err != nil {
+	// Escuchamos en el puerto 3001 (3000 lo ocupa otro proyecto); se puede cambiar con la variable PORT.
+	puerto := os.Getenv("PORT")
+	if puerto == "" {
+		puerto = "3001"
+	}
+	if err := app.Listen(":" + puerto); err != nil {
 		log.Println(err)
 	}
 }

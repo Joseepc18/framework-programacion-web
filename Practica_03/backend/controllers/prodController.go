@@ -13,27 +13,25 @@ import (
 
 	// Importamos Fiber para manejar la respuesta HTTP.
 	"github.com/gofiber/fiber/v2"
+	// Importamos el paquete config para acceder al cliente de Redis.
 	// Importamos nuestro paquete de modelos para usar la estructura APIError.
 	"multicatalogo-backend/models"
 )
 
-// ProductoController agrupa los manejadores del catálogo, con el repositorio y la caché
-// inyectados al arrancar el servidor.
-type ProductoController struct {
-	// repo es el acceso a PostgreSQL.
-	repo DBRepository
-	// cache es el almacenamiento en caché (Redis).
-	cache CacheRepository
-}
-
-// NuevoProductoController construye el controlador con las dependencias que recibirá.
-func NuevoProductoController(repo DBRepository, cache CacheRepository) *ProductoController {
-	return &ProductoController{repo: repo, cache: cache}
-}
-
-// GetProductos devuelve el catálogo de artículos aplicando el patrón Cache-Aside:
-// primero busca en Redis y solo consulta PostgreSQL si no hay caché.
+// GetProductos es la función controladora encargada de devolver el catálogo de artículos.
+// Aplica el patrón Cache-Aside: primero busca en Redis y solo consulta PostgreSQL si no hay caché.
 func (ctrl *ProductoController) GetProductos(c *fiber.Ctx) error {
+	// Con ?q=, ?page= o ?limit= respondemos paginado desde PostgreSQL ({data,page,limit,total}).
+	// Sin parámetros se mantiene el catálogo completo cacheado que consume la tienda.
+	if c.Query("q") != "" || c.Query("page") != "" || c.Query("limit") != "" {
+		pagina, limite := paginaDe(c)
+		resultado, err := ctrl.repo.ObtenerProductosPagina(c.Context(), c.Query("q"), true, pagina, limite)
+		if err != nil {
+			return errorInterno(c, err)
+		}
+		return c.JSON(resultado)
+	}
+
 	// Clave y tiempo de vida con los que guardamos el catálogo en Redis.
 	const clave = "productos:all"
 	const ttl = 5 * time.Minute
@@ -92,4 +90,15 @@ func (ctrl *ProductoController) GetProductoPorID(c *fiber.Ctx) error {
 
 	// Si existe, lo devolvemos con HTTP 200.
 	return c.JSON(producto)
+}
+
+// ProductoController agrupa los manejadores de su área con el repositorio y la caché inyectados al arrancar.
+type ProductoController struct {
+	repo  DBRepository
+	cache CacheRepository
+}
+
+// NuevoProductoController construye el controlador con las dependencias que recibirá.
+func NuevoProductoController(repo DBRepository, cache CacheRepository) *ProductoController {
+	return &ProductoController{repo: repo, cache: cache}
 }

@@ -1,7 +1,8 @@
 // src/components/Login.tsx
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth, type Rol } from "../context/AuthContext";
+import { apiFetch } from "../services/http";
 
 const Login = () => {
   const [email, setEmail] = useState<string>("");
@@ -16,27 +17,20 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Consumo de API RESTful usando promesas (Tema 4)
-    fetch("http://localhost:3000/api/login", {
+    apiFetch<{ token: string; email: string; rol: string }>("/api/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     })
-      .then((response) => {
-        if (!response.ok) throw new Error("Credenciales incorrectas");
-        return response.json();
-      })
       .then((data) => {
         setError("");
-        // La API devuelve el rol (admin | cliente) junto al correo (Tema 5)
         const rol: Rol = data.rol === "admin" ? "admin" : "cliente";
-        login({ email: data.email, rol });
+        login({ email: data.email, rol }, data.token);
 
         // Redirigimos según el rol: admin al Dashboard, cliente a la Tienda
         navigate(rol === "admin" ? "/" : "/tienda");
       })
       .catch((err) => {
-        setError(err.message);
+        setError(err.message || "Credenciales incorrectas");
       })
       .finally(() => {
         setLoading(false);
@@ -96,6 +90,13 @@ const Login = () => {
             {loading ? "Validando..." : "Iniciar Sesión"}
           </button>
         </form>
+
+        <p className="text-center text-sm text-slate-500 mt-6">
+          ¿Aún no tienes cuenta?{" "}
+          <Link to="/registro" className="text-indigo-600 font-semibold hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
 
         <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1">
           <p className="font-semibold text-slate-700">Cuentas de prueba:</p>

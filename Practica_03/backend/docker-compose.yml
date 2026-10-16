@@ -50,8 +50,8 @@ services:
       DB_NAME: ${DB_NAME}
       REDIS_ADDR: redis:6379
     ports:
-      # Mismo puerto que usa el frontend en desarrollo (http://localhost:3000).
-      - "3000:3000"
+      # API en http://localhost:3001 (el 3000 lo ocupa otro proyecto).
+      - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,136 +1,233 @@
 // src/components/Dashboard.tsx
-// Resumen general con KPIs calculados desde los datos reales de la red:
-// - La red se consulta al backend (GET /api/red) y se resume con funciones puras de data/red.ts
-import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { getRed } from '../services/redService';
+// Dashboard del admin con datos reales del negocio (Fase 6):
+// KPIs de ventas, ranking de productos y de distribuidores, y deuda de comisiones.
+import { useEffect, useState } from "react";
 import {
-  contarRed,
-  sumarVentasRed,
-  sumarComisiones,
-  nivelAlcanzado,
-  comisionDeReferido,
-  type Referido,
-} from '../data/red';
+  getComisionesPendientes,
+  getResumenVentas,
+  getTopProductos,
+  getTopReferidos,
+  type RangoReporte,
+  type ResumenVentas,
+  type TopProducto,
+  type TopReferido,
+} from "../services/reportesService";
+import type { Deuda } from "../services/liquidacionesService";
+
+const dinero = (valor: number): string =>
+  `$${valor.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const [red, setRed] = useState<Referido | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [desde, setDesde] = useState<string>("");
+  const [hasta, setHasta] = useState<string>("");
+  const [resumen, setResumen] = useState<ResumenVentas | null>(null);
+  const [productos, setProductos] = useState<TopProducto[]>([]);
+  const [referidos, setReferidos] = useState<TopReferido[]>([]);
+  const [deudas, setDeudas] = useState<Deuda[]>([]);
+  const [cargando, setCargando] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
-  // Pedimos la red al backend: cada usuario tiene su propia clave de caché (red:tree:{email}).
+  // Recarga los cuatro reportes en paralelo cada vez que cambia el periodo.
   useEffect(() => {
-    let activo = true;
+    let vigente = true;
+    const rango: RangoReporte = { desde: desde || undefined, hasta: hasta || undefined };
 
-    getRed(user?.email)
-      .then((datos) => {
-        if (activo) setRed(datos);
+    Promise.all([
+      getResumenVentas(rango),
+      getTopProductos(rango),
+      getTopReferidos(rango),
+      getComisionesPendientes(),
+    ])
+      .then(([res, prod, ref, deu]) => {
+        if (!vigente) return;
+        setResumen(res);
+        setProductos(prod);
+        setReferidos(ref);
+        setDeudas(deu);
+        setError("");
       })
-      .catch((e: Error) => {
-        if (activo) setError(e.message);
+      .catch((err) => {
+        if (vigente) setError(err.message || "No se pudieron cargar los reportes");
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
       });
 
     return () => {
-      activo = false;
+      vigente = false;
     };
-  }, [user?.email]);
+  }, [desde, hasta]);
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-lg">
-        {error}
-      </div>
-    );
-  }
-
-  if (!red) {
-    return <p className="text-slate-500">Cargando red multinivel…</p>;
-  }
-
-  const referidosDirectos = red.hijos?.length ?? 0;
-  const referidosActivos = contarRed(red);
-  const ventasRed = sumarVentasRed(red);
-  const comisionesMes = sumarComisiones(red);
-  const nivel = nivelAlcanzado(referidosDirectos);
+  const deudaTotal = deudas.reduce((suma, d) => suma + d.pendiente, 0);
 
   const kpis = [
-    { etiqueta: "Ventas de la Red", valor: `$${ventasRed.toLocaleString()}`, color: "text-indigo-600" },
-    { etiqueta: "Referidos Activos", valor: referidosActivos.toString(), color: "text-indigo-600" },
-    { etiqueta: "Comisiones del Mes", valor: `$${comisionesMes.toFixed(2)}`, color: "text-green-600" },
-    { etiqueta: "Nivel Actual", valor: nivel, color: "text-amber-600" },
+    { etiqueta: "Total Vendido", valor: dinero(resumen?.total_vendido ?? 0), color: "text-indigo-600" },
+    { etiqueta: "Pedidos", valor: String(resumen?.num_pedidos ?? 0), color: "text-indigo-600" },
+    { etiqueta: "Ticket Promedio", valor: dinero(resumen?.ticket_promedio ?? 0), color: "text-amber-600" },
+    { etiqueta: "Comisiones Devengadas", valor: dinero(resumen?.comisiones_devengadas ?? 0), color: "text-green-600" },
   ];
 
-  // Top 3 referidos por ventas (sin recursión: solo nivel 1)
-  const topReferidos = [...(red.hijos ?? [])]
-    .sort((a, b) => b.ventas - a.ventas)
-    .slice(0, 3);
+  const cambiarPeriodo = () => {
+    setCargando(true);
+  };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Resumen General</h1>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Resumen General</h1>
+        <div className="flex flex-wrap items-end gap-3 text-sm">
+          <label className="flex flex-col text-slate-500">
+            Desde
+            <input
+              type="date"
+              value={desde}
+              max={hasta || undefined}
+              onChange={(e) => {
+                cambiarPeriodo();
+                setDesde(e.target.value);
+              }}
+              className="border border-slate-300 rounded-lg px-3 py-2 min-h-11 text-slate-800"
+            />
+          </label>
+          <label className="flex flex-col text-slate-500">
+            Hasta
+            <input
+              type="date"
+              value={hasta}
+              min={desde || undefined}
+              onChange={(e) => {
+                cambiarPeriodo();
+                setHasta(e.target.value);
+              }}
+              className="border border-slate-300 rounded-lg px-3 py-2 min-h-11 text-slate-800"
+            />
+          </label>
+          {(desde || hasta) && (
+            <button
+              onClick={() => {
+                cambiarPeriodo();
+                setDesde("");
+                setHasta("");
+              }}
+              className="px-3 py-2 min-h-11 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
+              Todo el historial
+            </button>
+          )}
+        </div>
+      </div>
 
-      {/* ===== KPIS DERIVADOS DEL ESTADO ===== */}
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+          {error}
+        </div>
+      )}
+
+      {/* ===== KPIs DEL NEGOCIO ===== */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {kpis.map((kpi) => (
           <div key={kpi.etiqueta} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
             <p className="text-sm text-slate-500 uppercase font-semibold">{kpi.etiqueta}</p>
-            <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>{kpi.valor}</p>
+            <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>
+              {cargando ? "…" : kpi.valor}
+            </p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ===== TOP REFERIDOS ===== */}
+        {/* ===== TOP PRODUCTOS ===== */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Referidos del Mes</h2>
-          <div className="space-y-3">
-            {topReferidos.map((ref, idx) => (
-              <div
-                key={ref.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-slate-800">{ref.nombre}</p>
-                    <p className="text-xs text-slate-500">Nivel {ref.nivel}</p>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Productos</h2>
+          {cargando ? (
+            <p className="text-slate-500">Cargando...</p>
+          ) : productos.length === 0 ? (
+            <p className="text-slate-500">Sin ventas en el periodo seleccionado.</p>
+          ) : (
+            <div className="space-y-3">
+              {productos.map((p, idx) => (
+                <div
+                  key={p.producto_id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-8 h-8 shrink-0 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-800 truncate">{p.nombre}</p>
+                      <p className="text-xs text-slate-500">{p.unidades} unidades</p>
+                    </div>
                   </div>
+                  <p className="font-bold text-slate-800">{dinero(p.ingresos)}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-slate-800">${ref.ventas.toLocaleString()}</p>
-                  <p className="text-xs text-indigo-600 font-semibold">
-                    +${comisionDeReferido(ref).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ===== PROGRESO DE NIVEL ===== */}
+        {/* ===== TOP REFERIDOS ===== */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Progreso al Siguiente Nivel</h2>
-          <p className="text-slate-500 text-sm mb-4">
-            {referidosDirectos} referidos directos. El nivel se calcula con:
-          </p>
-          <ul className="space-y-2 text-sm text-slate-600 mb-6">
-            <li className="flex justify-between"><span>Bronce</span><span>0 – 1 directos</span></li>
-            <li className="flex justify-between"><span>Plata</span><span>2 – 3 directos</span></li>
-            <li className="flex justify-between"><span>Oro</span><span>4 – 5 directos</span></li>
-            <li className="flex justify-between"><span>Diamante</span><span>6+ directos</span></li>
-          </ul>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Distribuidores</h2>
+          {cargando ? (
+            <p className="text-slate-500">Cargando...</p>
+          ) : referidos.length === 0 ? (
+            <p className="text-slate-500">Sin ventas de red en el periodo seleccionado.</p>
+          ) : (
+            <div className="space-y-3">
+              {referidos.map((r, idx) => (
+                <div
+                  key={r.referido_id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-8 h-8 shrink-0 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <p className="font-semibold text-slate-800 truncate">{r.nombre}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-slate-800">{dinero(r.ventas_red)}</p>
+                    <p className="text-xs text-indigo-600 font-semibold">+{dinero(r.comisiones)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-              style={{ width: `${Math.min((referidosDirectos / 6) * 100, 100)}%` }}
-            />
+        {/* ===== COMISIONES PENDIENTES ===== */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-800">Comisiones Pendientes</h2>
+            <p className="text-amber-600 font-bold">{dinero(deudaTotal)}</p>
           </div>
-          <p className="text-center text-sm text-slate-500 mt-2 font-semibold">
-            Nivel actual: {nivel} ({referidosDirectos} / 6 directos para Diamante)
-          </p>
+          {cargando ? (
+            <p className="text-slate-500">Cargando...</p>
+          ) : deudas.length === 0 ? (
+            <p className="text-slate-500">No hay comisiones pendientes de pago.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                  <tr>
+                    <th className="text-left p-3">Distribuidor</th>
+                    <th className="text-center p-3">Comisiones</th>
+                    <th className="text-right p-3">Pendiente</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {deudas.map((d) => (
+                    <tr key={d.referido_id}>
+                      <td className="p-3 font-medium text-slate-800">{d.nombre}</td>
+                      <td className="p-3 text-center">{d.cantidad}</td>
+                      <td className="p-3 text-right font-semibold text-amber-700">{dinero(d.pendiente)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

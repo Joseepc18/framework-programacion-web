@@ -2,44 +2,34 @@
 package controllers
 
 import (
-	// Importamos strconv para armar el token ficticio a partir del ID del usuario.
-	"strconv"
 	// Importamos strings para limpiar espacios en blanco de los campos recibidos.
 	"strings"
 
+	// Importamos bcrypt para la verificación criptográfica de contraseñas.
+	"golang.org/x/crypto/bcrypt"
+
 	// Importamos el framework Fiber para tener acceso al contexto (c *fiber.Ctx) de la petición HTTP.
 	"github.com/gofiber/fiber/v2"
+	// Importamos el middleware para generar el token JWT.
+	"multicatalogo-backend/middleware"
 	// Importamos nuestro paquete de modelos para usar LoginRequest y APIError.
 	"multicatalogo-backend/models"
 )
 
-// AuthController agrupa la lógica de la autenticación y recibe el repositorio inyectado,
-// en lugar de llamar a funciones sueltas que usaban una variable global.
-type AuthController struct {
-	// repo es el acceso a los datos inyectado desde main.go.
-	repo DBRepository
-}
-
-// NuevoAuthController construye el controlador con la dependencia que recibirá.
-func NuevoAuthController(repo DBRepository) *AuthController {
-	return &AuthController{repo: repo}
-}
-
-// Login es el manejador que se ejecuta cuando el cliente envía sus credenciales.
+// Login es la función controladora que se ejecutará cuando el cliente envíe sus credenciales.
 func (ctrl *AuthController) Login(c *fiber.Ctx) error {
-	// Creamos una variable 'req' del tipo LoginRequest (ubicada en nuestro paquete models) para almacenar los datos.
+	// Creamos una variable 'req' del tipo LoginRequest para almacenar los datos.
 	var req models.LoginRequest
 
-	// Intentamos parsear (transformar) el cuerpo JSON entrante y guardarlo en la variable 'req'.
+	// Intentamos parsear el cuerpo JSON entrante.
 	if err := c.BodyParser(&req); err != nil {
-		// Si ocurre un error al parsear (ej. JSON mal formado), retornamos un estado HTTP 400 (Bad Request).
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
 			Status:  fiber.StatusBadRequest,
 			Message: "Cuerpo de petición inválido",
 		})
 	}
 
-	// Acumulamos los campos obligatorios que llegaron vacíos (o solo con espacios).
+	// Acumulamos los campos obligatorios que llegaron vacíos.
 	camposVacios := []string{}
 	if strings.TrimSpace(req.Email) == "" {
 		camposVacios = append(camposVacios, "email")
@@ -48,7 +38,6 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 		camposVacios = append(camposVacios, "password")
 	}
 
-	// Si falta algún campo, retornamos HTTP 400 indicando en Details cuáles faltan, sin consultar el repositorio.
 	if len(camposVacios) > 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
 			Status:  fiber.StatusBadRequest,
@@ -57,23 +46,50 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Consultamos al repositorio si existe una cuenta con esas credenciales.
-	usuario, ok, err := ctrl.repo.BuscarUsuarioPorCredenciales(req.Email, req.Password)
+	// Buscamos el usuario por correo electrónico en la base de datos.
+	usuario, ok, err := ctrl.repo.BuscarUsuarioPorEmail(req.Email)
 	if err != nil {
-		// Si la consulta falla, respondemos HTTP 500.
 		return errorInterno(c, err)
 	}
 	if !ok {
-		// Si las credenciales son incorrectas, retornamos un estado HTTP 401 (No autorizado).
 		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
 			Status:  fiber.StatusUnauthorized,
 			Message: "Credenciales incorrectas",
 		})
 	}
 
-	// Generamos un token ficticio a partir del ID (la autenticación real llegará en una fase posterior).
-	token := "fake-jwt-token-" + strconv.Itoa(usuario.ID)
+	// Una cuenta desactivada por un administrador no puede iniciar sesión.
+	if !usuario.Activo {
+		return c.Status(fiber.StatusForbidden).JSON(models.APIError{
+			Status:  fiber.StatusForbidden,
+			Message: "Cuenta desactivada: contacte al administrador",
+		})
+	}
 
-	// Si las credenciales son válidas, retornamos HTTP 200 con el mismo JSON que ya espera el frontend.
+	// Comparamos el hash de la contraseña usando bcrypt.
+	if err := bcrypt.CompareHashAndPassword([]byte(usuario.Password), []byte(req.Password)); err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
+			Status:  fiber.StatusUnauthorized,
+			Message: "Credenciales incorrectas",
+		})
+	}
+
+	// Generamos el token JWT real firmado por 2 horas.
+	token, err := middleware.GenerarToken(usuario.ID, usuario.Email, usuario.Rol)
+	if err != nil {
+		return errorInterno(c, err)
+	}
+
+	// Retornamos HTTP 200 con el token JWT real, email y rol del usuario.
 	return c.JSON(fiber.Map{"token": token, "email": usuario.Email, "rol": usuario.Rol})
+}
+
+// AuthController agrupa los manejadores de su área con el repositorio inyectado al arrancar.
+type AuthController struct {
+	repo DBRepository
+}
+
+// NuevoAuthController construye el controlador con las dependencias que recibirá.
+func NuevoAuthController(repo DBRepository) *AuthController {
+	return &AuthController{repo: repo}
 }
