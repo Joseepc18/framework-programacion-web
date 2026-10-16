@@ -6,7 +6,6 @@ package repository
 // Importamos context para el contexto de la petición HTTP.
 import (
 	"context"
-	"errors"
 	"math"
 
 	// Importamos pgx para transacciones y errores de fila.
@@ -16,16 +15,12 @@ import (
 	"multicatalogo-backend/models"
 )
 
-// ErrSinComisionesPendientes indica que el distribuidor no debe nada:
-// o ya fue liquidado o nunca generó comisiones.
-var ErrSinComisionesPendientes = errors.New("el distribuidor no tiene comisiones pendientes")
-
 // CrearLiquidacion liquida TODO el saldo pendiente de un distribuidor.
 // Dentro de la transacción: bloquea las filas con FOR UPDATE, crea la
 // liquidación con el total y marca esas filas como pagadas. Así un mismo
 // saldo no puede liquidarse dos veces aunque lleguen peticiones a la vez.
-func CrearLiquidacion(ctx context.Context, referidoID int) (models.Liquidacion, error) {
-	tx, err := db.Begin(ctx)
+func (pg *PostgresRepository) CrearLiquidacion(ctx context.Context, referidoID int) (models.Liquidacion, error) {
+	tx, err := pg.db.Begin(ctx)
 	if err != nil {
 		return models.Liquidacion{}, err
 	}
@@ -61,7 +56,7 @@ func CrearLiquidacion(ctx context.Context, referidoID int) (models.Liquidacion, 
 
 	// Nada que pagar: devolvemos un error de dominio traducible a HTTP 409.
 	if cantidad == 0 {
-		return models.Liquidacion{}, ErrSinComisionesPendientes
+		return models.Liquidacion{}, models.ErrSinComisionesPendientes
 	}
 
 	// Redondeamos a dos decimales antes de persistir el total del pago.
@@ -111,15 +106,15 @@ const liquidacionesSelect = `SELECT l.id, l.referido_id, r.nombre, l.total, l.es
 	JOIN referidos r ON r.id = l.referido_id`
 
 // ObtenerLiquidaciones devuelve el histórico global de pagos (solo admin).
-func ObtenerLiquidaciones(ctx context.Context, page, limit int) (models.Pagina, error) {
+func (pg *PostgresRepository) ObtenerLiquidaciones(ctx context.Context, page, limit int) (models.Pagina, error) {
 	pagina, limite, offset := normalizarPagina(itoa(page), itoa(limit))
 
 	var total int
-	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM liquidaciones`).Scan(&total); err != nil {
+	if err := pg.db.QueryRow(ctx, `SELECT COUNT(*) FROM liquidaciones`).Scan(&total); err != nil {
 		return models.Pagina{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		liquidacionesSelect+` ORDER BY l.creado_en DESC, l.id DESC LIMIT $1 OFFSET $2`,
 		limite, offset,
 	)
@@ -136,18 +131,18 @@ func ObtenerLiquidaciones(ctx context.Context, page, limit int) (models.Pagina, 
 }
 
 // ObtenerLiquidacionesMias devuelve solo los pagos recibidos por el distribuidor.
-func ObtenerLiquidacionesMias(ctx context.Context, referidoID, page, limit int) (models.Pagina, error) {
+func (pg *PostgresRepository) ObtenerLiquidacionesMias(ctx context.Context, referidoID, page, limit int) (models.Pagina, error) {
 	pagina, limite, offset := normalizarPagina(itoa(page), itoa(limit))
 
 	var total int
-	if err := db.QueryRow(ctx,
+	if err := pg.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM liquidaciones WHERE referido_id = $1`,
 		referidoID,
 	).Scan(&total); err != nil {
 		return models.Pagina{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		liquidacionesSelect+` WHERE l.referido_id = $1 ORDER BY l.creado_en DESC, l.id DESC LIMIT $2 OFFSET $3`,
 		referidoID, limite, offset,
 	)
@@ -179,8 +174,8 @@ func coleccionLiquidaciones(rows pgx.Rows) ([]models.Liquidacion, error) {
 
 // ObtenerDeudas resume cuánto debe cada distribuidor (comisiones pendientes).
 // Es la cola de trabajo del back-office: solo aparece quien tiene saldo vivo.
-func ObtenerDeudas(ctx context.Context) ([]models.DeudaComisiones, error) {
-	rows, err := db.Query(ctx,
+func (pg *PostgresRepository) ObtenerDeudas(ctx context.Context) ([]models.DeudaComisiones, error) {
+	rows, err := pg.db.Query(ctx,
 		`SELECT r.id, r.nombre, COALESCE(r.email, ''),
 		        COALESCE(SUM(c.monto) FILTER (WHERE c.estado = 'pendiente'), 0),
 		        COUNT(c.id) FILTER (WHERE c.estado = 'pendiente')

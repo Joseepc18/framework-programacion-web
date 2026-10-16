@@ -83,13 +83,13 @@ type ItemPedido struct {
 
 // CheckoutRequest define la petición de compra.
 type CheckoutRequest struct {
-	Nombre      string       `json:"nombre"`
-	Email       string       `json:"email"`
-	Direccion   string       `json:"direccion"`
-	Ciudad      string       `json:"ciudad"`
-	Telefono    string       `json:"telefono"`
-	MetodoPago  string       `json:"metodoPago"`
-	Items       []ItemPedido `json:"items"`
+	Nombre     string       `json:"nombre"`
+	Email      string       `json:"email"`
+	Direccion  string       `json:"direccion"`
+	Ciudad     string       `json:"ciudad"`
+	Telefono   string       `json:"telefono"`
+	MetodoPago string       `json:"metodoPago"`
+	Items      []ItemPedido `json:"items"`
 }
 
 // PedidoConfirmado es la respuesta exitosa tras el checkout transaccional.
@@ -277,6 +277,8 @@ type Referido struct {
 	Nivel int `json:"nivel"`
 	// Ventas son las ventas mensuales del referido en dólares.
 	Ventas float64 `json:"ventas"`
+	// Comisiones es el saldo acumulado que el referido ha ganado por las compras de su red.
+	Comisiones float64 `json:"comisiones"`
 	// Hijos son los referidos un nivel más abajo; omitempty evita enviar el campo si no tiene hijos.
 	Hijos []Referido `json:"hijos,omitempty"`
 }

@@ -6,13 +6,12 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"multicatalogo-backend/models"
-	"multicatalogo-backend/repository"
 )
 
 // GetUsuarios devuelve una página de cuentas; acepta ?q= (nombre o correo), ?page y ?limit.
-func GetUsuarios(c *fiber.Ctx) error {
+func (ctrl *UsuarioController) GetUsuarios(c *fiber.Ctx) error {
 	pagina, limite := paginaDe(c)
-	resultado, err := repository.ObtenerUsuarios(c.Context(), c.Query("q"), pagina, limite)
+	resultado, err := ctrl.repo.ObtenerUsuarios(c.Context(), c.Query("q"), pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -22,7 +21,7 @@ func GetUsuarios(c *fiber.Ctx) error {
 // ActualizarUsuario cambia el rol y/o activa o desactiva una cuenta (PATCH /api/usuarios/:id).
 // Un admin no puede quitarse a sí mismo el rol ni desactivar su propia cuenta:
 // evitaría quedarse sin administradores.
-func ActualizarUsuario(c *fiber.Ctx) error {
+func (ctrl *UsuarioController) ActualizarUsuario(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil || id < 1 {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -64,7 +63,7 @@ func ActualizarUsuario(c *fiber.Ctx) error {
 		})
 	}
 
-	usuario, existe, err := repository.ActualizarUsuario(c.Context(), id, req.Rol, req.Activo)
+	usuario, existe, err := ctrl.repo.ActualizarUsuario(c.Context(), id, req.Rol, req.Activo)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -76,4 +75,14 @@ func ActualizarUsuario(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(usuario)
+}
+
+// UsuarioController agrupa los manejadores de su área con el repositorio inyectado al arrancar.
+type UsuarioController struct {
+	repo DBRepository
+}
+
+// NuevoUsuarioController construye el controlador con las dependencias que recibirá.
+func NuevoUsuarioController(repo DBRepository) *UsuarioController {
+	return &UsuarioController{repo: repo}
 }

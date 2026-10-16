@@ -7,13 +7,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// Importamos nuestros modelos para APIError.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para crear y leer liquidaciones.
-	"multicatalogo-backend/repository"
 )
 
 // CrearLiquidacion liquida el saldo pendiente de un distribuidor (solo admin).
 // El cuerpo espera {"referido_id": N}; si no queda deuda responde 409.
-func CrearLiquidacion(c *fiber.Ctx) error {
+func (ctrl *LiquidacionController) CrearLiquidacion(c *fiber.Ctx) error {
 	var req struct {
 		ReferidoID int `json:"referido_id"`
 	}
@@ -31,9 +29,9 @@ func CrearLiquidacion(c *fiber.Ctx) error {
 		})
 	}
 
-	liquidacion, err := repository.CrearLiquidacion(c.Context(), req.ReferidoID)
+	liquidacion, err := ctrl.repo.CrearLiquidacion(c.Context(), req.ReferidoID)
 	if err != nil {
-		if err == repository.ErrSinComisionesPendientes {
+		if err == models.ErrSinComisionesPendientes {
 			return c.Status(fiber.StatusConflict).JSON(models.APIError{
 				Status:  fiber.StatusConflict,
 				Message: "El distribuidor no tiene comisiones pendientes",
@@ -46,9 +44,9 @@ func CrearLiquidacion(c *fiber.Ctx) error {
 }
 
 // GetLiquidaciones devuelve el histórico global de pagos (solo admin).
-func GetLiquidaciones(c *fiber.Ctx) error {
+func (ctrl *LiquidacionController) GetLiquidaciones(c *fiber.Ctx) error {
 	pagina, limite := paginaDe(c)
-	resultado, err := repository.ObtenerLiquidaciones(c.Context(), pagina, limite)
+	resultado, err := ctrl.repo.ObtenerLiquidaciones(c.Context(), pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -56,7 +54,7 @@ func GetLiquidaciones(c *fiber.Ctx) error {
 }
 
 // GetLiquidacionesMias devuelve los pagos recibidos por el usuario del token.
-func GetLiquidacionesMias(c *fiber.Ctx) error {
+func (ctrl *LiquidacionController) GetLiquidacionesMias(c *fiber.Ctx) error {
 	usuarioID, ok := usuarioIDDelToken(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
@@ -65,7 +63,7 @@ func GetLiquidacionesMias(c *fiber.Ctx) error {
 		})
 	}
 
-	nodoID, tieneNodo, err := repository.NodoDeRed(c.Context(), usuarioID)
+	nodoID, tieneNodo, err := ctrl.repo.NodoDeRed(c.Context(), usuarioID)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -74,7 +72,7 @@ func GetLiquidacionesMias(c *fiber.Ctx) error {
 	}
 
 	pagina, limite := paginaDe(c)
-	resultado, err := repository.ObtenerLiquidacionesMias(c.Context(), nodoID, pagina, limite)
+	resultado, err := ctrl.repo.ObtenerLiquidacionesMias(c.Context(), nodoID, pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -82,10 +80,20 @@ func GetLiquidacionesMias(c *fiber.Ctx) error {
 }
 
 // GetDeudas devuelve la cola de deuda por distribuidor (solo admin).
-func GetDeudas(c *fiber.Ctx) error {
-	deudas, err := repository.ObtenerDeudas(c.Context())
+func (ctrl *LiquidacionController) GetDeudas(c *fiber.Ctx) error {
+	deudas, err := ctrl.repo.ObtenerDeudas(c.Context())
 	if err != nil {
 		return errorInterno(c, err)
 	}
 	return c.JSON(deudas)
+}
+
+// LiquidacionController agrupa los manejadores de su área con el repositorio inyectado al arrancar.
+type LiquidacionController struct {
+	repo DBRepository
+}
+
+// NuevoLiquidacionController construye el controlador con las dependencias que recibirá.
+func NuevoLiquidacionController(repo DBRepository) *LiquidacionController {
+	return &LiquidacionController{repo: repo}
 }

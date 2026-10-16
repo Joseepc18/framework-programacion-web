@@ -12,8 +12,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// Importamos nuestros modelos para Pedido, APIError y Pagina.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para leer y transicionar pedidos.
-	"multicatalogo-backend/repository"
 )
 
 // estadosPedido lista los valores admitidos por el ciclo de vida del pedido.
@@ -59,7 +57,7 @@ func atoiSeguro(texto string, porDefecto int) int {
 
 // GetPedidosMios devuelve el historial de pedidos del usuario del token.
 // Un cliente jamás ve pedidos de otro: el filtro lo impone el claim sub.
-func GetPedidosMios(c *fiber.Ctx) error {
+func (ctrl *PedidoController) GetPedidosMios(c *fiber.Ctx) error {
 	usuarioID, ok := usuarioIDDelToken(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
@@ -69,7 +67,7 @@ func GetPedidosMios(c *fiber.Ctx) error {
 	}
 
 	pagina, limite := paginaDe(c)
-	resultado, err := repository.ObtenerPedidosMios(c.Context(), usuarioID, pagina, limite)
+	resultado, err := ctrl.repo.ObtenerPedidosMios(c.Context(), usuarioID, pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -77,7 +75,7 @@ func GetPedidosMios(c *fiber.Ctx) error {
 }
 
 // GetPedidosAdmin lista todos los pedidos con filtro opcional ?estado=.
-func GetPedidosAdmin(c *fiber.Ctx) error {
+func (ctrl *PedidoController) GetPedidosAdmin(c *fiber.Ctx) error {
 	estado := strings.TrimSpace(c.Query("estado"))
 	if estado != "" && !estadosPedido[estado] {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -88,7 +86,7 @@ func GetPedidosAdmin(c *fiber.Ctx) error {
 	}
 
 	pagina, limite := paginaDe(c)
-	resultado, err := repository.ObtenerPedidosAdmin(c.Context(), estado, pagina, limite)
+	resultado, err := ctrl.repo.ObtenerPedidosAdmin(c.Context(), estado, pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -97,7 +95,7 @@ func GetPedidosAdmin(c *fiber.Ctx) error {
 
 // GetPedidoDetalle devuelve cabecera y líneas de un pedido concreto.
 // El dueño (por token) o un administrador pueden consultarlo; nadie más.
-func GetPedidoDetalle(c *fiber.Ctx) error {
+func (ctrl *PedidoController) GetPedidoDetalle(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -115,9 +113,9 @@ func GetPedidoDetalle(c *fiber.Ctx) error {
 		})
 	}
 
-	detalle, err := repository.ObtenerPedidoDetalle(c.Context(), id, usuarioID, emailDelToken(c), esAdminDelToken(c))
+	detalle, err := ctrl.repo.ObtenerPedidoDetalle(c.Context(), id, usuarioID, emailDelToken(c), esAdminDelToken(c))
 	if err != nil {
-		if err == repository.ErrPedidoNoEncontrado {
+		if err == models.ErrPedidoNoEncontrado {
 			return c.Status(fiber.StatusNotFound).JSON(models.APIError{
 				Status:  fiber.StatusNotFound,
 				Message: "Pedido no encontrado",
@@ -131,7 +129,7 @@ func GetPedidoDetalle(c *fiber.Ctx) error {
 
 // CambiarEstadoPedido aplica una transición del ciclo de vida (solo admin).
 // La cancelación revierte stock y comisiones dentro de la misma transacción.
-func CambiarEstadoPedido(c *fiber.Ctx) error {
+func (ctrl *PedidoController) CambiarEstadoPedido(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -160,16 +158,16 @@ func CambiarEstadoPedido(c *fiber.Ctx) error {
 		})
 	}
 
-	actualizado, err := repository.CambiarEstadoPedido(c.Context(), id, estado)
+	actualizado, err := ctrl.repo.CambiarEstadoPedido(c.Context(), id, estado)
 	if err != nil {
-		if err == repository.ErrPedidoNoEncontrado {
+		if err == models.ErrPedidoNoEncontrado {
 			return c.Status(fiber.StatusNotFound).JSON(models.APIError{
 				Status:  fiber.StatusNotFound,
 				Message: "Pedido no encontrado",
 				Details: fiber.Map{"id": id},
 			})
 		}
-		if err == repository.ErrTransicionInvalida {
+		if err == models.ErrTransicionInvalida {
 			return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
 				Status:  fiber.StatusBadRequest,
 				Message: "Transición de estado inválida para el pedido",
@@ -181,8 +179,19 @@ func CambiarEstadoPedido(c *fiber.Ctx) error {
 
 	// La cancelación devuelve stock al catálogo: invalidamos su caché.
 	if estado == "cancelado" {
-		invalidarCacheCatalogo()
+		ctrl.cache.Eliminar(c.Context(), "productos:all")
 	}
 
 	return c.JSON(actualizado)
+}
+
+// PedidoController agrupa los manejadores de pedidos con el repositorio y la caché inyectados al arrancar.
+type PedidoController struct {
+	repo  DBRepository
+	cache CacheRepository
+}
+
+// NuevoPedidoController construye el controlador con las dependencias que recibirá.
+func NuevoPedidoController(repo DBRepository, cache CacheRepository) *PedidoController {
+	return &PedidoController{repo: repo, cache: cache}
 }

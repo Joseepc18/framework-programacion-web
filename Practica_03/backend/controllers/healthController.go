@@ -4,16 +4,23 @@ package controllers
 import (
 	// Importamos Fiber para manejar la respuesta HTTP.
 	"github.com/gofiber/fiber/v2"
-	// Importamos config para consultar el estado de Redis.
-	"multicatalogo-backend/config"
-	// Importamos repository para comprobar la base de datos PostgreSQL.
-	"multicatalogo-backend/repository"
 )
 
+// HealthController comprueba el estado de PostgreSQL y de Redis a través de sus interfaces.
+type HealthController struct {
+	repo  DBRepository
+	cache CacheRepository
+}
+
+// NuevoHealthController construye el controlador con las dependencias que revisará.
+func NuevoHealthController(repo DBRepository, cache CacheRepository) *HealthController {
+	return &HealthController{repo: repo, cache: cache}
+}
+
 // HealthCheck confirma que el servidor y sus dependencias (PostgreSQL y Redis) están operativas.
-func HealthCheck(c *fiber.Ctx) error {
-	dbStatus := "up"
-	if db := repository.GetDB(); db == nil || db.Ping(c.Context()) != nil {
+// Sin PostgreSQL responde 503; sin Redis responde 200 "degraded" porque la API sigue sirviendo.
+func (ctrl *HealthController) HealthCheck(c *fiber.Ctx) error {
+	if ctrl.repo.Ping(c.Context()) != nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
 			"status":   "error",
 			"database": "down",
@@ -21,21 +28,19 @@ func HealthCheck(c *fiber.Ctx) error {
 		})
 	}
 
-	redisStatus := "up"
-	if config.Cache == nil || config.Cache.Ping(c.Context()).Err() != nil {
-		redisStatus = "down"
+	if ctrl.cache.Ping(c.Context()) != nil {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"status":   "degraded",
-			"database": dbStatus,
-			"redis":    redisStatus,
+			"database": "up",
+			"redis":    "down",
 			"message":  "Servicio operativo pero con caché degradada",
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":   "ok",
-		"database": dbStatus,
-		"redis":    redisStatus,
+		"database": "up",
+		"redis":    "up",
 		"message":  "Todos los servicios operativos",
 	})
 }

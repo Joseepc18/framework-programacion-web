@@ -16,14 +16,6 @@ import (
 	"multicatalogo-backend/models"
 )
 
-// Errores de dominio reconocidos por los controladores para traducirlos a HTTP.
-var (
-	// ErrPedidoNoIndica dueño cuando el pedido no existe o no pertenece al token.
-	ErrPedidoNoEncontrado = errors.New("pedido no encontrado")
-	// ErrTransicionInvalida indica un salto de estado fuera del ciclo de vida.
-	ErrTransicionInvalida = errors.New("transición de estado inválida")
-)
-
 // transicionesValidas describe el ciclo de vida permitido del pedido:
 // pendiente → preparando → enviado → entregado, y cancelado desde etapas abiertas.
 var transicionesValidas = map[string][]string{
@@ -80,11 +72,11 @@ func escanearPedido(row filaPedido) (models.Pedido, error) {
 
 // ObtenerPedidosMios devuelve el historial de pedidos del usuario del token,
 // paginado y ordenado del más reciente al más antiguo.
-func ObtenerPedidosMios(ctx context.Context, usuarioID, page, limit int) (models.Pagina, error) {
+func (pg *PostgresRepository) ObtenerPedidosMios(ctx context.Context, usuarioID, page, limit int) (models.Pagina, error) {
 	pagina, limite, offset := normalizarPagina(strconv.Itoa(page), strconv.Itoa(limit))
 
 	var total int
-	err := db.QueryRow(ctx,
+	err := pg.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM pedidos WHERE usuario_id = $1`,
 		usuarioID,
 	).Scan(&total)
@@ -92,7 +84,7 @@ func ObtenerPedidosMios(ctx context.Context, usuarioID, page, limit int) (models
 		return models.Pagina{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		`SELECT `+seleccionPedidos+`
 		 FROM pedidos
 		 WHERE usuario_id = $1
@@ -122,12 +114,12 @@ func ObtenerPedidosMios(ctx context.Context, usuarioID, page, limit int) (models
 
 // ObtenerPedidosAdmin lista todos los pedidos del back-office con filtro
 // opcional por estado (?estado=) y paginación estándar.
-func ObtenerPedidosAdmin(ctx context.Context, estado string, page, limit int) (models.Pagina, error) {
+func (pg *PostgresRepository) ObtenerPedidosAdmin(ctx context.Context, estado string, page, limit int) (models.Pagina, error) {
 	pagina, limite, offset := normalizarPagina(strconv.Itoa(page), strconv.Itoa(limit))
 	filtro := strings.TrimSpace(estado)
 
 	var total int
-	err := db.QueryRow(ctx,
+	err := pg.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM pedidos WHERE ($1 = '' OR estado = $1)`,
 		filtro,
 	).Scan(&total)
@@ -135,7 +127,7 @@ func ObtenerPedidosAdmin(ctx context.Context, estado string, page, limit int) (m
 		return models.Pagina{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		`SELECT `+seleccionPedidos+`
 		 FROM pedidos
 		 WHERE ($1 = '' OR estado = $1)
@@ -166,13 +158,13 @@ func ObtenerPedidosAdmin(ctx context.Context, estado string, page, limit int) (m
 // ObtenerPedidoDetalle devuelve la cabecera y las líneas de un pedido.
 // El parámetro esAdmin permite a un administrador consultar cualquier pedido;
 // un cliente solo recibe los suyos (dueño por usuario_id o por su email).
-func ObtenerPedidoDetalle(ctx context.Context, id int, usuarioID int, email string, esAdmin bool) (models.PedidoDetalle, error) {
-	p, err := escanearPedido(db.QueryRow(ctx,
+func (pg *PostgresRepository) ObtenerPedidoDetalle(ctx context.Context, id int, usuarioID int, email string, esAdmin bool) (models.PedidoDetalle, error) {
+	p, err := escanearPedido(pg.db.QueryRow(ctx,
 		`SELECT `+seleccionPedidos+` FROM pedidos WHERE id = $1`,
 		id,
 	))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return models.PedidoDetalle{}, ErrPedidoNoEncontrado
+		return models.PedidoDetalle{}, models.ErrPedidoNoEncontrado
 	}
 	if err != nil {
 		return models.PedidoDetalle{}, err
@@ -183,11 +175,11 @@ func ObtenerPedidoDetalle(ctx context.Context, id int, usuarioID int, email stri
 		if !esDueno && !strings.EqualFold(p.ClienteEmail, email) {
 			// Devolvemos el mismo error que para un ID inexistente para no
 			// filtrar la existencia de pedidos ajenos.
-			return models.PedidoDetalle{}, ErrPedidoNoEncontrado
+			return models.PedidoDetalle{}, models.ErrPedidoNoEncontrado
 		}
 	}
 
-	items, err := obtenerItemsPedido(ctx, id)
+	items, err := pg.obtenerItemsPedido(ctx, id)
 	if err != nil {
 		return models.PedidoDetalle{}, err
 	}
@@ -196,8 +188,8 @@ func ObtenerPedidoDetalle(ctx context.Context, id int, usuarioID int, email stri
 }
 
 // obtenerItemsPedido carga las líneas del pedido con el precio vigente al comprar.
-func obtenerItemsPedido(ctx context.Context, pedidoID int) ([]models.ItemPedidoDetalle, error) {
-	rows, err := db.Query(ctx,
+func (pg *PostgresRepository) obtenerItemsPedido(ctx context.Context, pedidoID int) ([]models.ItemPedidoDetalle, error) {
+	rows, err := pg.db.Query(ctx,
 		`SELECT producto_id, nombre, cantidad, precio_unitario, subtotal
 		 FROM pedido_items
 		 WHERE pedido_id = $1
@@ -223,10 +215,10 @@ func obtenerItemsPedido(ctx context.Context, pedidoID int) ([]models.ItemPedidoD
 // CambiarEstadoPedido aplica una transición del ciclo de vida dentro de una
 // transacción ACID. La cancelación es el único caso especial: devuelve el
 // stock de cada ítem y revierte las comisiones que el pedido había generado.
-func CambiarEstadoPedido(ctx context.Context, id int, nuevoEstado string) (models.Pedido, error) {
+func (pg *PostgresRepository) CambiarEstadoPedido(ctx context.Context, id int, nuevoEstado string) (models.Pedido, error) {
 	nuevoEstado = strings.TrimSpace(strings.ToLower(nuevoEstado))
 
-	tx, err := db.Begin(ctx)
+	tx, err := pg.db.Begin(ctx)
 	if err != nil {
 		return models.Pedido{}, err
 	}
@@ -238,7 +230,7 @@ func CambiarEstadoPedido(ctx context.Context, id int, nuevoEstado string) (model
 		id,
 	))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return models.Pedido{}, ErrPedidoNoEncontrado
+		return models.Pedido{}, models.ErrPedidoNoEncontrado
 	}
 	if err != nil {
 		return models.Pedido{}, err
@@ -258,7 +250,7 @@ func CambiarEstadoPedido(ctx context.Context, id int, nuevoEstado string) (model
 		}
 	}
 	if !esValida || !transicionPermitida {
-		return models.Pedido{}, ErrTransicionInvalida
+		return models.Pedido{}, models.ErrTransicionInvalida
 	}
 
 	if _, err := tx.Exec(ctx,

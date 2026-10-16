@@ -74,18 +74,18 @@ func repartirComisionesEnTx(ctx context.Context, tx pgx.Tx, email string, pedido
 }
 
 // ComisionesMias pagina el ledger del usuario y agrega los totales por estado.
-func ObtenerComisionesMias(ctx context.Context, referidoID, page, limit int) (models.PaginaComisiones, error) {
+func (pg *PostgresRepository) ObtenerComisionesMias(ctx context.Context, referidoID, page, limit int) (models.PaginaComisiones, error) {
 	pagina, limite, offset := normalizarPagina(itoa(page), itoa(limit))
 
 	var total int
-	if err := db.QueryRow(ctx,
+	if err := pg.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM comisiones WHERE referido_id = $1`,
 		referidoID,
 	).Scan(&total); err != nil {
 		return models.PaginaComisiones{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		`SELECT c.id, c.pedido_id, p.numero, c.nivel, c.porcentaje, c.monto, c.estado, c.creado_en
 		 FROM comisiones c
 		 JOIN pedidos p ON p.id = c.pedido_id
@@ -114,7 +114,7 @@ func ObtenerComisionesMias(ctx context.Context, referidoID, page, limit int) (mo
 
 	// Totales globales (no solo de la página): lo que se debe y lo ya pagado.
 	var pendiente, pagado float64
-	if err := db.QueryRow(ctx,
+	if err := pg.db.QueryRow(ctx,
 		`SELECT COALESCE(SUM(monto) FILTER (WHERE estado = 'pendiente'), 0),
 		        COALESCE(SUM(monto) FILTER (WHERE estado = 'pagada'), 0)
 		 FROM comisiones
@@ -137,8 +137,8 @@ func ObtenerComisionesMias(ctx context.Context, referidoID, page, limit int) (mo
 // ObtenerRedPropia devuelve el subárbol de red que cuelga del nodo indicado,
 // junto con el código de invitación de ese nodo (para el link /registro?ref=).
 // A diferencia de ObtenerRed, NO devuelve el árbol global: cada usuario ve lo suyo.
-func ObtenerRedPropia(ctx context.Context, nodoID int) (models.RedPropia, error) {
-	filas, err := cargarRedPlana(ctx)
+func (pg *PostgresRepository) ObtenerRedPropia(ctx context.Context, nodoID int) (models.RedPropia, error) {
+	filas, err := pg.cargarRedPlana(ctx)
 	if err != nil {
 		return models.RedPropia{}, err
 	}
@@ -160,7 +160,7 @@ func ObtenerRedPropia(ctx context.Context, nodoID int) (models.RedPropia, error)
 
 	// El código de invitación del nodo raíz arma el link de referido.
 	var codigo string
-	if err := db.QueryRow(ctx,
+	if err := pg.db.QueryRow(ctx,
 		`SELECT COALESCE(codigo, '') FROM referidos WHERE id = $1`,
 		nodoID,
 	).Scan(&codigo); err != nil {
@@ -172,8 +172,8 @@ func ObtenerRedPropia(ctx context.Context, nodoID int) (models.RedPropia, error)
 }
 
 // cargarRedPlana lee toda la tabla referidos como filas sueltas.
-func cargarRedPlana(ctx context.Context) ([]referidoPlano, error) {
-	rows, err := db.Query(ctx,
+func (pg *PostgresRepository) cargarRedPlana(ctx context.Context) ([]referidoPlano, error) {
+	rows, err := pg.db.Query(ctx,
 		`SELECT id, nombre, nivel, ventas, parent_id FROM referidos ORDER BY id`,
 	)
 	if err != nil {
@@ -194,9 +194,9 @@ func cargarRedPlana(ctx context.Context) ([]referidoPlano, error) {
 
 // NodoDeRed devuelve el ID del nodo de la red que representa a un usuario.
 // El segundo valor es false si la cuenta no tiene nodo asociado.
-func NodoDeRed(ctx context.Context, usuarioID int) (int, bool, error) {
+func (pg *PostgresRepository) NodoDeRed(ctx context.Context, usuarioID int) (int, bool, error) {
 	var nodoID *int
-	err := db.QueryRow(ctx,
+	err := pg.db.QueryRow(ctx,
 		`SELECT referido_id FROM usuarios WHERE id = $1`,
 		usuarioID,
 	).Scan(&nodoID)

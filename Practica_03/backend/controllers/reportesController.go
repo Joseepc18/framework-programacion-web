@@ -6,13 +6,12 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"multicatalogo-backend/models"
-	"multicatalogo-backend/repository"
 )
 
 // rangoDeQuery lee ?desde y ?hasta (YYYY-MM-DD). El rango es inclusivo en ambos extremos.
 // Devuelve false si alguna fecha viene mal formada.
-func rangoDeQuery(c *fiber.Ctx) (repository.RangoFechas, bool) {
-	var r repository.RangoFechas
+func rangoDeQuery(c *fiber.Ctx) (models.RangoFechas, bool) {
+	var r models.RangoFechas
 	if v := c.Query("desde"); v != "" {
 		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
 		if err != nil {
@@ -45,12 +44,12 @@ func limiteTop(c *fiber.Ctx) int {
 }
 
 // GetReporteResumen devuelve los KPIs de ventas del periodo.
-func GetReporteResumen(c *fiber.Ctx) error {
+func (ctrl *ReporteController) GetReporteResumen(c *fiber.Ctx) error {
 	rango, ok := rangoDeQuery(c)
 	if !ok {
 		return fechaInvalida(c)
 	}
-	res, err := repository.ObtenerResumenVentas(c.Context(), rango)
+	res, err := ctrl.repo.ObtenerResumenVentas(c.Context(), rango)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -58,12 +57,12 @@ func GetReporteResumen(c *fiber.Ctx) error {
 }
 
 // GetReporteTopProductos devuelve los productos más vendidos por ingresos.
-func GetReporteTopProductos(c *fiber.Ctx) error {
+func (ctrl *ReporteController) GetReporteTopProductos(c *fiber.Ctx) error {
 	rango, ok := rangoDeQuery(c)
 	if !ok {
 		return fechaInvalida(c)
 	}
-	top, err := repository.ObtenerTopProductos(c.Context(), rango, limiteTop(c))
+	top, err := ctrl.repo.ObtenerTopProductos(c.Context(), rango, limiteTop(c))
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -71,12 +70,12 @@ func GetReporteTopProductos(c *fiber.Ctx) error {
 }
 
 // GetReporteTopReferidos devuelve los distribuidores con más ventas en su red.
-func GetReporteTopReferidos(c *fiber.Ctx) error {
+func (ctrl *ReporteController) GetReporteTopReferidos(c *fiber.Ctx) error {
 	rango, ok := rangoDeQuery(c)
 	if !ok {
 		return fechaInvalida(c)
 	}
-	top, err := repository.ObtenerTopReferidos(c.Context(), rango, limiteTop(c))
+	top, err := ctrl.repo.ObtenerTopReferidos(c.Context(), rango, limiteTop(c))
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -84,10 +83,20 @@ func GetReporteTopReferidos(c *fiber.Ctx) error {
 }
 
 // GetReporteComisionesPendientes devuelve la deuda por distribuidor (misma cola de liquidaciones).
-func GetReporteComisionesPendientes(c *fiber.Ctx) error {
-	deudas, err := repository.ObtenerDeudas(c.Context())
+func (ctrl *ReporteController) GetReporteComisionesPendientes(c *fiber.Ctx) error {
+	deudas, err := ctrl.repo.ObtenerDeudas(c.Context())
 	if err != nil {
 		return errorInterno(c, err)
 	}
 	return c.JSON(deudas)
+}
+
+// ReporteController agrupa los manejadores de su área con el repositorio inyectado al arrancar.
+type ReporteController struct {
+	repo DBRepository
+}
+
+// NuevoReporteController construye el controlador con las dependencias que recibirá.
+func NuevoReporteController(repo DBRepository) *ReporteController {
+	return &ReporteController{repo: repo}
 }

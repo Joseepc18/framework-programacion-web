@@ -14,12 +14,10 @@ import (
 	"multicatalogo-backend/middleware"
 	// Importamos nuestro paquete de modelos para usar LoginRequest y APIError.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para consultar las cuentas registradas.
-	"multicatalogo-backend/repository"
 )
 
 // Login es la función controladora que se ejecutará cuando el cliente envíe sus credenciales.
-func Login(c *fiber.Ctx) error {
+func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 	// Creamos una variable 'req' del tipo LoginRequest para almacenar los datos.
 	var req models.LoginRequest
 
@@ -49,7 +47,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// Buscamos el usuario por correo electrónico en la base de datos.
-	usuario, ok, err := repository.BuscarUsuarioPorEmail(req.Email)
+	usuario, ok, err := ctrl.repo.BuscarUsuarioPorEmail(req.Email)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -84,4 +82,14 @@ func Login(c *fiber.Ctx) error {
 
 	// Retornamos HTTP 200 con el token JWT real, email y rol del usuario.
 	return c.JSON(fiber.Map{"token": token, "email": usuario.Email, "rol": usuario.Rol})
+}
+
+// AuthController agrupa los manejadores de su área con el repositorio inyectado al arrancar.
+type AuthController struct {
+	repo DBRepository
+}
+
+// NuevoAuthController construye el controlador con las dependencias que recibirá.
+func NuevoAuthController(repo DBRepository) *AuthController {
+	return &AuthController{repo: repo}
 }

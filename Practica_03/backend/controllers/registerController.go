@@ -12,14 +12,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// Importamos nuestros modelos para RegisterRequest y APIError.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para crear la cuenta y su nodo en la red.
-	"multicatalogo-backend/repository"
 )
 
 // Register crea una cuenta de cliente y, si llega código de referido,
 // su nodo queda colgado del patrocinador dentro de la misma transacción.
 // Respuestas: 201 creado, 400 datos faltantes o ref inválido, 409 email duplicado.
-func Register(c *fiber.Ctx) error {
+func (ctrl *AuthController) Register(c *fiber.Ctx) error {
 	var req models.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -53,22 +51,22 @@ func Register(c *fiber.Ctx) error {
 		return errorInterno(c, err)
 	}
 
-	usuario, err := repository.CrearUsuario(c.Context(), req, string(hash))
+	usuario, err := ctrl.repo.CrearUsuario(c.Context(), req, string(hash))
 	if err != nil {
 		// Mapeamos los errores de dominio a sus códigos HTTP.
 		switch err {
-		case repository.ErrEmailYaExiste:
+		case models.ErrEmailYaExiste:
 			return c.Status(fiber.StatusConflict).JSON(models.APIError{
 				Status:  fiber.StatusConflict,
 				Message: "El correo electrónico ya está registrado",
 			})
-		case repository.ErrCodigoInvalido:
+		case models.ErrCodigoInvalido:
 			return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
 				Status:  fiber.StatusBadRequest,
 				Message: "El código de referido no existe",
 				Details: fiber.Map{"ref": strings.ToUpper(strings.TrimSpace(req.Ref))},
 			})
-		case repository.ErrRegistroInvalido:
+		case models.ErrRegistroInvalido:
 			return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
 				Status:  fiber.StatusBadRequest,
 				Message: "Nombre, correo y contraseña son obligatorios",

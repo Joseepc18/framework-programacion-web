@@ -11,15 +11,25 @@ import (
 
 	// Importamos Fiber para manejar la respuesta HTTP.
 	"github.com/gofiber/fiber/v2"
-	// Importamos el paquete config para acceder al cliente de Redis.
-	"multicatalogo-backend/config"
-	// Importamos el repositorio para consultar el árbol de referidos.
-	"multicatalogo-backend/repository"
 )
+
+// RedController agrupa los manejadores de la red multinivel, con el repositorio y la caché
+// inyectados al arrancar el servidor.
+type RedController struct {
+	// repo es el acceso a PostgreSQL.
+	repo DBRepository
+	// cache es el almacenamiento en caché (Redis).
+	cache CacheRepository
+}
+
+// NuevoRedController construye el controlador con las dependencias que recibirá.
+func NuevoRedController(repo DBRepository, cache CacheRepository) *RedController {
+	return &RedController{repo: repo, cache: cache}
+}
 
 // GetRed devuelve el árbol completo de la red multinivel del usuario.
 // Reconstruir el árbol es costoso, así que aplica Cache-Aside con un TTL de 10 minutos.
-func GetRed(c *fiber.Ctx) error {
+func (ctrl *RedController) GetRed(c *fiber.Ctx) error {
 	// Tiempo de vida del árbol guardado en Redis.
 	const ttl = 10 * time.Minute
 
@@ -34,13 +44,13 @@ func GetRed(c *fiber.Ctx) error {
 	ctx := context.Background()
 
 	// 1) Cache Hit: devolvemos el árbol guardado sin reconstruirlo ni tocar PostgreSQL.
-	if datos, err := config.Cache.Get(ctx, clave).Bytes(); err == nil {
+	if datos, ok := ctrl.cache.Obtener(ctx, clave); ok {
 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 		return c.Send(datos)
 	}
 
 	// 2) Cache Miss: consultamos y reconstruimos el árbol desde la base de datos.
-	red, err := repository.ObtenerRed()
+	red, err := ctrl.repo.ObtenerRed()
 	if err != nil {
 		// Si la consulta falla, respondemos HTTP 500.
 		return errorInterno(c, err)
@@ -48,7 +58,7 @@ func GetRed(c *fiber.Ctx) error {
 
 	// 3) Guardamos el árbol serializado en Redis durante 10 minutos.
 	if datos, err := json.Marshal(red); err == nil {
-		config.Cache.Set(ctx, clave, datos, ttl)
+		ctrl.cache.Guardar(ctx, clave, datos, ttl)
 	}
 
 	// Fiber serializa la estructura recursiva de referidos a JSON.

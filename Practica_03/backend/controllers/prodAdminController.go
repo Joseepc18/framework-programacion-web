@@ -12,27 +12,21 @@ import (
 
 	// Importamos el framework Fiber para manejar la petición y la respuesta.
 	"github.com/gofiber/fiber/v2"
-	// Importamos config para invalidar la caché de Redis tras cada escritura.
-	"multicatalogo-backend/config"
 	// Importamos nuestros modelos para Producto y APIError.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para leer y escribir el catálogo.
-	"multicatalogo-backend/repository"
 )
 
 // invalidarCacheCatalogo elimina la clave del catálogo público para que la
 // siguiente lectura (cache-aside) vuelva a consultar PostgreSQL.
-func invalidarCacheCatalogo() {
-	if config.Cache != nil {
-		_ = config.Cache.Del(context.Background(), "productos:all").Err()
-	}
+func (ctrl *ProductoController) invalidarCacheCatalogo() {
+	ctrl.cache.Eliminar(context.Background(), "productos:all")
 }
 
 // GetProductosAdmin devuelve una página de productos (activos e inactivos) con
 // búsqueda server-side mediante ?q= (ILIKE sobre nombre, categoría y descripción).
-func GetProductosAdmin(c *fiber.Ctx) error {
+func (ctrl *ProductoController) GetProductosAdmin(c *fiber.Ctx) error {
 	pagina, limite := paginaDe(c)
-	resultado, err := repository.ObtenerProductosPagina(c.Context(), c.Query("q"), false, pagina, limite)
+	resultado, err := ctrl.repo.ObtenerProductosPagina(c.Context(), c.Query("q"), false, pagina, limite)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -40,7 +34,7 @@ func GetProductosAdmin(c *fiber.Ctx) error {
 }
 
 // CrearProducto valida y da de alta un producto del catálogo (POST /api/productos).
-func CrearProducto(c *fiber.Ctx) error {
+func (ctrl *ProductoController) CrearProducto(c *fiber.Ctx) error {
 	var p models.Producto
 	if err := c.BodyParser(&p); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -65,17 +59,17 @@ func CrearProducto(c *fiber.Ctx) error {
 		p.Stock = 0
 	}
 
-	creado, err := repository.CrearProducto(c.Context(), p)
+	creado, err := ctrl.repo.CrearProducto(c.Context(), p)
 	if err != nil {
 		return errorInterno(c, err)
 	}
 
-	invalidarCacheCatalogo()
+	ctrl.invalidarCacheCatalogo()
 	return c.Status(fiber.StatusCreated).JSON(creado)
 }
 
 // ActualizarProducto edita un producto existente (PUT /api/productos/:id).
-func ActualizarProducto(c *fiber.Ctx) error {
+func (ctrl *ProductoController) ActualizarProducto(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -106,7 +100,7 @@ func ActualizarProducto(c *fiber.Ctx) error {
 		p.Stock = 0
 	}
 
-	existe, err := repository.ActualizarProducto(c.Context(), id, p)
+	existe, err := ctrl.repo.ActualizarProducto(c.Context(), id, p)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -118,9 +112,9 @@ func ActualizarProducto(c *fiber.Ctx) error {
 		})
 	}
 
-	invalidarCacheCatalogo()
+	ctrl.invalidarCacheCatalogo()
 
-	actualizado, _, err := repository.ObtenerProductoPorID(id)
+	actualizado, _, err := ctrl.repo.ObtenerProductoPorID(id)
 	if err != nil {
 		// La edición ya se guardó; devolvemos solo el ID si la relectura falla.
 		return c.JSON(fiber.Map{"id": id, "message": "Producto actualizado"})
@@ -130,7 +124,7 @@ func ActualizarProducto(c *fiber.Ctx) error {
 
 // DesactivarProducto aplica el borrado lógico (DELETE /api/productos/:id).
 // No borra la fila: los pedido_items históricos siguen siendo válidos.
-func DesactivarProducto(c *fiber.Ctx) error {
+func (ctrl *ProductoController) DesactivarProducto(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -143,7 +137,7 @@ func DesactivarProducto(c *fiber.Ctx) error {
 	// ?activar=true reactiva el producto; por defecto lo desactiva.
 	activo := c.Query("activar") == "true"
 
-	existe, err := repository.CambiarEstadoProducto(c.Context(), id, activo)
+	existe, err := ctrl.repo.CambiarEstadoProducto(c.Context(), id, activo)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -155,7 +149,7 @@ func DesactivarProducto(c *fiber.Ctx) error {
 		})
 	}
 
-	invalidarCacheCatalogo()
+	ctrl.invalidarCacheCatalogo()
 
 	mensaje := "Producto desactivado del catálogo"
 	if activo {

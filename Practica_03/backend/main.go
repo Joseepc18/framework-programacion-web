@@ -14,8 +14,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// Importamos el middleware CORS para gestionar la seguridad entre distintos puertos/dominios.
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	// Importamos el paquete cache con el cliente de Redis.
+	"multicatalogo-backend/cache"
 	// Importamos el paquete config para conectarnos a PostgreSQL.
 	"multicatalogo-backend/config"
+	// Importamos los controladores que se van a instanciar al arrancar.
+	"multicatalogo-backend/controllers"
 	// Importamos el repositorio para inyectarle la conexión a la base de datos.
 	"multicatalogo-backend/repository"
 	// Importamos nuestro propio paquete de rutas para delegarle la configuración de los endpoints.
@@ -32,15 +36,30 @@ func main() {
 	// Cerramos el pool cuando main termine, liberando todas las conexiones abiertas.
 	defer pool.Close()
 
-	// Inyectamos la conexión en la capa de datos.
-	repository.Inicializar(pool)
-
 	// Abrimos la conexión con Redis, el almacenamiento en caché de las consultas de lectura.
-	if err := config.ConectarRedis(); err != nil {
+	almacen, err := cache.NuevoRedis()
+	if err != nil {
 		log.Fatal(err)
 	}
 	// Cerramos el cliente de Redis cuando main termine.
-	defer func() { _ = config.Cache.Close() }()
+	defer func() { _ = almacen.Cerrar() }()
+
+	// --- Inyección de dependencias (Tema 4) ---
+	// Construimos una sola vez las implementaciones concretas...
+	repositorio := repository.Nuevo(pool)
+
+	// ...y se las pasamos a cada controlador, que solo conoce las interfaces que necesita.
+	manejadores := routes.Manejadores{
+		Auth:          controllers.NuevoAuthController(repositorio),
+		Productos:     controllers.NuevoProductoController(repositorio, almacen),
+		Red:           controllers.NuevoRedController(repositorio, almacen),
+		Checkout:      controllers.NuevoCheckoutController(repositorio, almacen),
+		Health:        controllers.NuevoHealthController(repositorio, almacen),
+		Pedidos:       controllers.NuevoPedidoController(repositorio, almacen),
+		Liquidaciones: controllers.NuevoLiquidacionController(repositorio),
+		Reportes:      controllers.NuevoReporteController(repositorio),
+		Usuarios:      controllers.NuevoUsuarioController(repositorio),
+	}
 
 	// Instanciamos una nueva aplicación de Fiber y la guardamos en la variable 'app'.
 	app := fiber.New()
@@ -53,8 +72,9 @@ func main() {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
-	// Llamamos a la función SetupRoutes de nuestro paquete 'routes', enviándole la instancia de nuestra 'app'.
-	routes.SetupRoutes(app)
+	// Llamamos a la función SetupRoutes de nuestro paquete 'routes', enviándole la instancia de 'app'
+	// y los controladores ya construidos.
+	routes.SetupRoutes(app, manejadores)
 
 	// Al recibir Ctrl+C (o la señal de terminación), apagamos Fiber de forma ordenada.
 	// Así app.Listen retorna, main termina y se ejecuta el defer que cierra el pool.
@@ -74,64 +94,3 @@ func main() {
 		log.Println(err)
 	}
 }
-
-
-
-
-
-// // main.go
-// package main
-
-// import (
-// 	"github.com/gofiber/fiber/v2"
-// 	"github.com/gofiber/fiber/v2/middleware/cors"
-// )
-
-// // Estructuras de datos
-// type LoginRequest struct {
-// 	Email    string `json:"email"`
-// 	Password string `json:"password"`
-// }
-
-// type Producto struct {
-// 	ID     int     `json:"id"`
-// 	Nombre string  `json:"nombre"`
-// 	Precio float64 `json:"precio"`
-// 	Img    string  `json:"img"`
-// }
-
-// func main() {
-// 	app := fiber.New()
-
-// 	// Middleware CORS para permitir peticiones desde React (Vite corre en el puerto 5173)
-// 	app.Use(cors.New(cors.Config{
-// 		AllowOrigins: "http://localhost:5173",
-// 		AllowHeaders: "Origin, Content-Type, Accept",
-// 	}))
-
-// 	// Endpoint para Login
-// 	app.Post("/api/login", func(c *fiber.Ctx) error {
-// 		var req LoginRequest
-// 		if err := c.BodyParser(&req); err != nil {
-// 			return c.Status(400).JSON(fiber.Map{"error": "Cuerpo de petición inválido"})
-// 		}
-
-// 		if req.Email == "admin@upse.edu.ec" && req.Password == "123456" {
-// 			return c.JSON(fiber.Map{"token": "fake-jwt-token-123", "email": req.Email})
-// 		}
-// 		return c.Status(401).JSON(fiber.Map{"error": "Credenciales incorrectas"})
-// 	})
-
-// 	// Endpoint para obtener Productos
-// 	app.Get("/api/productos", func(c *fiber.Ctx) error {
-// 		productos := []Producto{
-// 			{ID: 1, Nombre: "Serum Revitalizante", Precio: 45.00, Img: "https://picsum.photos/seed/serum/150"},
-// 			{ID: 2, Nombre: "Crema Hidratante Pro", Precio: 32.50, Img: "https://picsum.photos/seed/crema/150"},
-// 			{ID: 3, Nombre: "Tónico Purificante", Precio: 28.00, Img: "https://picsum.photos/seed/tonico/150"},
-// 			{ID: 4, Nombre: "Mascarilla Nocturna", Precio: 50.00, Img: "https://picsum.photos/seed/mascarilla/150"},
-// 		}
-// 		return c.JSON(productos)
-// 	})
-
-// 	app.Listen(":3000")
-// }

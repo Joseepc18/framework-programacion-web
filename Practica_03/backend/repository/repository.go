@@ -22,24 +22,27 @@ import (
 	"multicatalogo-backend/models"
 )
 
-// db es el pool de conexiones inyectado desde main al arrancar la aplicación.
-var db *pgxpool.Pool
-
-// Inicializar recibe el pool de conexiones que usarán todas las funciones del repositorio.
-func Inicializar(pool *pgxpool.Pool) {
-	db = pool
+// PostgresRepository implementa el acceso a datos sobre un pool de conexiones de PostgreSQL.
+// Se construye una sola vez en main y se inyecta en los controladores por interfaz.
+type PostgresRepository struct {
+	db *pgxpool.Pool
 }
 
-// GetDB devuelve el pool de conexiones actual (usado para verificaciones de health).
-func GetDB() *pgxpool.Pool {
-	return db
+// Nuevo crea el repositorio con el pool de conexiones recibido.
+func Nuevo(pool *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{db: pool}
+}
+
+// Ping comprueba que PostgreSQL responde (lo usa el health check).
+func (pg *PostgresRepository) Ping(ctx context.Context) error {
+	return pg.db.Ping(ctx)
 }
 
 // BuscarUsuarioPorEmail busca un usuario por su dirección de correo para verificar su contraseña hasheada.
-func BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error) {
+func (pg *PostgresRepository) BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error) {
 	var u models.Usuario
 
-	err := db.QueryRow(context.Background(),
+	err := pg.db.QueryRow(context.Background(),
 		`SELECT id, email, password, rol, nombre, activo, referido_id FROM usuarios WHERE email = $1`,
 		email,
 	).Scan(&u.ID, &u.Email, &u.Password, &u.Rol, &u.Nombre, &u.Activo, &u.ReferidoID)
@@ -52,14 +55,6 @@ func BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error) {
 	}
 	return u, true, nil
 }
-
-// Errores de dominio del alta de cuentas.
-var (
-	ErrEmailYaExiste      = errors.New("el correo electrónico ya está registrado")
-	ErrCodigoInvalido     = errors.New("el código de referido no existe")
-	ErrRegistroInvalido   = errors.New("nombre, correo y contraseña son obligatorios")
-	ErrCuentaDesactivada  = errors.New("cuenta desactivada")
-)
 
 // esViolacionDeUnicidad reconoce el error 23505 de PostgreSQL (clave duplicada).
 func esViolacionDeUnicidad(err error) bool {
@@ -109,15 +104,15 @@ func generarCodigoPropuesto(ctx context.Context, tx pgx.Tx, email string) (strin
 //   - con código de referido válido, el nodo cuelga del patrocinador;
 //   - sin código, cuelga de la raíz de la semilla para no romper el árbol.
 //
-// Devuelve ErrEmailYaExiste (409) o ErrCodigoInvalido (400) según el caso.
-func CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword string) (models.Usuario, error) {
+// Devuelve models.ErrEmailYaExiste (409) o models.ErrCodigoInvalido (400) según el caso.
+func (pg *PostgresRepository) CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword string) (models.Usuario, error) {
 	nombre := strings.TrimSpace(req.Nombre)
 	email := strings.TrimSpace(req.Email)
 	if nombre == "" || email == "" || hashPassword == "" {
-		return models.Usuario{}, ErrRegistroInvalido
+		return models.Usuario{}, models.ErrRegistroInvalido
 	}
 
-	tx, err := db.Begin(ctx)
+	tx, err := pg.db.Begin(ctx)
 	if err != nil {
 		return models.Usuario{}, err
 	}
@@ -134,7 +129,7 @@ func CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword 
 			codigoRef,
 		).Scan(&padreID)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.Usuario{}, ErrCodigoInvalido
+			return models.Usuario{}, models.ErrCodigoInvalido
 		}
 		if err != nil {
 			return models.Usuario{}, err
@@ -169,7 +164,7 @@ func CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword 
 		email, hashPassword, nombre,
 	).Scan(&usuarioID)
 	if esViolacionDeUnicidad(err) {
-		return models.Usuario{}, ErrEmailYaExiste
+		return models.Usuario{}, models.ErrEmailYaExiste
 	}
 	if err != nil {
 		return models.Usuario{}, err
@@ -216,8 +211,8 @@ func CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword 
 
 // ObtenerProductos devuelve el catálogo público: solo productos activos, ordenados por ID.
 // Los inactivos (borrado lógico) quedan ocultos para el cliente pero siguen en pedido_items.
-func ObtenerProductos() ([]models.Producto, error) {
-	rows, err := db.Query(context.Background(),
+func (pg *PostgresRepository) ObtenerProductos() ([]models.Producto, error) {
+	rows, err := pg.db.Query(context.Background(),
 		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock
 		 FROM productos WHERE activo = TRUE ORDER BY id`,
 	)
@@ -233,10 +228,10 @@ func ObtenerProductos() ([]models.Producto, error) {
 }
 
 // ObtenerProductoPorID devuelve el producto con el ID indicado incluyendo su stock.
-func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
+func (pg *PostgresRepository) ObtenerProductoPorID(id int) (models.Producto, bool, error) {
 	var p models.Producto
 
-	err := db.QueryRow(context.Background(),
+	err := pg.db.QueryRow(context.Background(),
 		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock FROM productos WHERE id = $1`,
 		id,
 	).Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria, &p.Stock)
@@ -252,7 +247,7 @@ func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
 
 // ObtenerProductosPagina devuelve una página del catálogo con búsqueda server-side (?q=, ILIKE).
 // soloActivos=true es la vista pública; false incluye los inactivos (vista admin).
-func ObtenerProductosPagina(ctx context.Context, busqueda string, soloActivos bool, page, limit int) (models.Pagina, error) {
+func (pg *PostgresRepository) ObtenerProductosPagina(ctx context.Context, busqueda string, soloActivos bool, page, limit int) (models.Pagina, error) {
 	pagina, limite, offset := normalizarPagina(itoa(page), itoa(limit))
 
 	// ILIKE con comodín escapado: el usuario puede escribir % o _ sin romper el filtro.
@@ -264,14 +259,14 @@ func ObtenerProductosPagina(ctx context.Context, busqueda string, soloActivos bo
 		 AND (nombre ILIKE $2 OR categoria ILIKE $2 OR descripcion ILIKE $2)`
 
 	var total int
-	if err := db.QueryRow(ctx,
+	if err := pg.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM productos `+filtro,
 		!soloActivos, patron,
 	).Scan(&total); err != nil {
 		return models.Pagina{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock, activo
 		 FROM productos `+filtro+` ORDER BY id LIMIT $3 OFFSET $4`,
 		!soloActivos, patron, limite, offset,
@@ -294,8 +289,8 @@ func escanearProductoAdmin(row pgx.CollectableRow) (models.Producto, error) {
 }
 
 // CrearProducto inserta un artículo del catálogo con borrado lógico activo por defecto.
-func CrearProducto(ctx context.Context, p models.Producto) (models.Producto, error) {
-	err := db.QueryRow(ctx,
+func (pg *PostgresRepository) CrearProducto(ctx context.Context, p models.Producto) (models.Producto, error) {
+	err := pg.db.QueryRow(ctx,
 		`INSERT INTO productos (nombre, descripcion, precio, categoria, img, galeria, stock, activo)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE) RETURNING id`,
 		p.Nombre, p.Descripcion, p.Precio, p.Categoria, p.Img, p.Galeria, p.Stock,
@@ -309,8 +304,8 @@ func CrearProducto(ctx context.Context, p models.Producto) (models.Producto, err
 
 // ActualizarProducto edita los campos del producto indicado.
 // El booleano indica si existía un producto con ese ID.
-func ActualizarProducto(ctx context.Context, id int, p models.Producto) (bool, error) {
-	res, err := db.Exec(ctx,
+func (pg *PostgresRepository) ActualizarProducto(ctx context.Context, id int, p models.Producto) (bool, error) {
+	res, err := pg.db.Exec(ctx,
 		`UPDATE productos
 		 SET nombre = $1, descripcion = $2, precio = $3, categoria = $4,
 		     img = $5, galeria = $6, stock = $7
@@ -325,8 +320,8 @@ func ActualizarProducto(ctx context.Context, id int, p models.Producto) (bool, e
 
 // CambiarEstadoProducto aplica el borrado lógico (activo = false) o lo revierte.
 // No borra la fila para conservar el historial de pedido_items.
-func CambiarEstadoProducto(ctx context.Context, id int, activo bool) (bool, error) {
-	res, err := db.Exec(ctx,
+func (pg *PostgresRepository) CambiarEstadoProducto(ctx context.Context, id int, activo bool) (bool, error) {
+	res, err := pg.db.Exec(ctx,
 		`UPDATE productos SET activo = $1 WHERE id = $2`,
 		activo, id,
 	)
@@ -336,22 +331,15 @@ func CambiarEstadoProducto(ctx context.Context, id int, activo bool) (bool, erro
 	return res.RowsAffected() > 0, nil
 }
 
-// Errores de dominio para el proceso de checkout
-var (
-	ErrStockInsuficiente = errors.New("stock insuficiente")
-	ErrCantidadInvalida  = errors.New("cantidad debe ser mayor que cero")
-	ErrCarritoVacio      = errors.New("el carrito no contiene artículos")
-)
-
 // CrearPedido ejecuta una transacción ACID con FOR UPDATE para validar stock, descontarlo y registrar el pedido.
 // CrearPedido ejecuta la compra transaccional: valida stock con FOR UPDATE,
 // descuenta inventario y asocia el pedido a la identidad del token (usuarioID).
-func CrearPedido(ctx context.Context, usuarioID *int, email string, req models.CheckoutRequest) (models.PedidoConfirmado, error) {
+func (pg *PostgresRepository) CrearPedido(ctx context.Context, usuarioID *int, email string, req models.CheckoutRequest) (models.PedidoConfirmado, error) {
 	if len(req.Items) == 0 {
-		return models.PedidoConfirmado{}, ErrCarritoVacio
+		return models.PedidoConfirmado{}, models.ErrCarritoVacio
 	}
 
-	tx, err := db.Begin(ctx)
+	tx, err := pg.db.Begin(ctx)
 	if err != nil {
 		return models.PedidoConfirmado{}, err
 	}
@@ -371,7 +359,7 @@ func CrearPedido(ctx context.Context, usuarioID *int, email string, req models.C
 	// Validamos cada ítem bloqueando la fila correspondiente en productos con FOR UPDATE
 	for _, it := range req.Items {
 		if it.Cantidad <= 0 {
-			return models.PedidoConfirmado{}, ErrCantidadInvalida
+			return models.PedidoConfirmado{}, models.ErrCantidadInvalida
 		}
 
 		var p models.Producto
@@ -464,9 +452,9 @@ func CrearPedido(ctx context.Context, usuarioID *int, email string, req models.C
 
 // ActualizarComisionesUpline suma las ventas al upline multinivel (hasta 3 niveles) en la tabla referidos.
 // El punto de partida es la FK usuarios.referido_id, no una correspondencia de IDs por email.
-func ActualizarComisionesUpline(ctx context.Context, email string, monto float64) error {
+func (pg *PostgresRepository) ActualizarComisionesUpline(ctx context.Context, email string, monto float64) error {
 	var nodoID *int
-	err := db.QueryRow(ctx,
+	err := pg.db.QueryRow(ctx,
 		`SELECT referido_id FROM usuarios WHERE email = $1`,
 		email,
 	).Scan(&nodoID)
@@ -477,7 +465,7 @@ func ActualizarComisionesUpline(ctx context.Context, email string, monto float64
 	currentID := nodoID
 	for nivel := 1; nivel <= 3 && currentID != nil; nivel++ {
 		var parentID *int
-		err := db.QueryRow(ctx,
+		err := pg.db.QueryRow(ctx,
 			`SELECT parent_id FROM referidos WHERE id = $1`,
 			*currentID,
 		).Scan(&parentID)
@@ -486,7 +474,7 @@ func ActualizarComisionesUpline(ctx context.Context, email string, monto float64
 		}
 
 		// Acreditamos venta al patrocinador
-		_, _ = db.Exec(ctx,
+		_, _ = pg.db.Exec(ctx,
 			`UPDATE referidos SET ventas = ventas + $1 WHERE id = $2`,
 			monto, *parentID,
 		)
@@ -505,8 +493,8 @@ type referidoPlano struct {
 
 // ObtenerRed devuelve el árbol completo de la red multinivel.
 // Se consulta la tabla como una lista plana y el árbol se reconstruye en memoria usando parent_id.
-func ObtenerRed() (models.Referido, error) {
-	filas, err := cargarRedPlana(context.Background())
+func (pg *PostgresRepository) ObtenerRed() (models.Referido, error) {
+	filas, err := pg.cargarRedPlana(context.Background())
 	if err != nil {
 		return models.Referido{}, err
 	}

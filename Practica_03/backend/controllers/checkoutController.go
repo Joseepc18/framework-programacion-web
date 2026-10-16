@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"multicatalogo-backend/config"
 	"multicatalogo-backend/models"
-	"multicatalogo-backend/repository"
 )
 
 // Checkout maneja la compra transaccional validando stock e identidad obtenida del JWT.
-func Checkout(c *fiber.Ctx) error {
+func (ctrl *CheckoutController) Checkout(c *fiber.Ctx) error {
 	var req models.CheckoutRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
@@ -45,14 +43,14 @@ func Checkout(c *fiber.Ctx) error {
 	if usuarioID > 0 {
 		duenoID = &usuarioID
 	}
-	res, err := repository.CrearPedido(c.Context(), duenoID, emailAuth, req)
+	res, err := ctrl.repo.CrearPedido(c.Context(), duenoID, emailAuth, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "Stock insuficiente") ||
 			strings.Contains(err.Error(), "Producto desactivado") ||
 			strings.Contains(err.Error(), "producto no encontrado") ||
-			err == repository.ErrStockInsuficiente ||
-			err == repository.ErrCantidadInvalida ||
-			err == repository.ErrCarritoVacio {
+			err == models.ErrStockInsuficiente ||
+			err == models.ErrCantidadInvalida ||
+			err == models.ErrCarritoVacio {
 			return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
 				Status:  fiber.StatusBadRequest,
 				Message: err.Error(),
@@ -62,16 +60,24 @@ func Checkout(c *fiber.Ctx) error {
 	}
 
 	// Invalidamos la caché en Redis tras la mutación de inventario
-	if config.Cache != nil {
-		_ = config.Cache.Del(context.Background(), "productos:all").Err()
-		_ = config.Cache.Del(context.Background(), "red:tree:"+emailAuth).Err()
-	}
+	ctrl.cache.Eliminar(context.Background(), "productos:all", "red:tree:"+emailAuth)
 
 	// Disparamos la actualización del upline en una goroutine con contexto propio
 	go func(email string, total float64) {
 		ctx := context.Background()
-		_ = repository.ActualizarComisionesUpline(ctx, email, total)
+		_ = ctrl.repo.ActualizarComisionesUpline(ctx, email, total)
 	}(emailAuth, res.Total)
 
 	return c.Status(fiber.StatusCreated).JSON(res)
+}
+
+// CheckoutController agrupa los manejadores de su área con el repositorio y la caché inyectados al arrancar.
+type CheckoutController struct {
+	repo  DBRepository
+	cache CacheRepository
+}
+
+// NuevoCheckoutController construye el controlador con las dependencias que recibirá.
+func NuevoCheckoutController(repo DBRepository, cache CacheRepository) *CheckoutController {
+	return &CheckoutController{repo: repo, cache: cache}
 }

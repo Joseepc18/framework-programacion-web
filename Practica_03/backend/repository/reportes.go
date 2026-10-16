@@ -5,22 +5,14 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"multicatalogo-backend/models"
 )
 
-// RangoFechas delimita el periodo [Desde, Hasta); un límite nil significa sin límite.
-// El controlador entrega Hasta como el día siguiente para que el rango sea inclusivo.
-type RangoFechas struct {
-	Desde *time.Time
-	Hasta *time.Time
-}
-
 // ObtenerResumenVentas calcula total vendido, nº de pedidos, ticket promedio y comisiones devengadas.
-func ObtenerResumenVentas(ctx context.Context, r RangoFechas) (models.ResumenVentas, error) {
+func (pg *PostgresRepository) ObtenerResumenVentas(ctx context.Context, r models.RangoFechas) (models.ResumenVentas, error) {
 	var res models.ResumenVentas
-	err := db.QueryRow(ctx,
+	err := pg.db.QueryRow(ctx,
 		`SELECT COALESCE(SUM(total), 0), COUNT(*)
 		 FROM pedidos
 		 WHERE estado <> 'cancelado'
@@ -32,7 +24,7 @@ func ObtenerResumenVentas(ctx context.Context, r RangoFechas) (models.ResumenVen
 		return res, err
 	}
 
-	err = db.QueryRow(ctx,
+	err = pg.db.QueryRow(ctx,
 		`SELECT COALESCE(SUM(c.monto), 0)
 		 FROM comisiones c
 		 JOIN pedidos p ON p.id = c.pedido_id
@@ -54,8 +46,8 @@ func ObtenerResumenVentas(ctx context.Context, r RangoFechas) (models.ResumenVen
 }
 
 // ObtenerTopProductos ordena los productos por ingresos (SUM cantidad × precio).
-func ObtenerTopProductos(ctx context.Context, r RangoFechas, limite int) ([]models.TopProducto, error) {
-	rows, err := db.Query(ctx,
+func (pg *PostgresRepository) ObtenerTopProductos(ctx context.Context, r models.RangoFechas, limite int) ([]models.TopProducto, error) {
+	rows, err := pg.db.Query(ctx,
 		`SELECT i.producto_id, MAX(i.nombre), SUM(i.cantidad), SUM(i.cantidad * i.precio_unitario)
 		 FROM pedido_items i
 		 JOIN pedidos p ON p.id = i.pedido_id
@@ -86,8 +78,8 @@ func ObtenerTopProductos(ctx context.Context, r RangoFechas, limite int) ([]mode
 // ObtenerTopReferidos ordena a los distribuidores por las ventas que generó su red.
 // Cada fila del ledger une a un cobrador con un pedido de su red (una por nivel),
 // así que sumar p.total por cobrador da las ventas de su red sin duplicados.
-func ObtenerTopReferidos(ctx context.Context, r RangoFechas, limite int) ([]models.TopReferido, error) {
-	rows, err := db.Query(ctx,
+func (pg *PostgresRepository) ObtenerTopReferidos(ctx context.Context, r models.RangoFechas, limite int) ([]models.TopReferido, error) {
+	rows, err := pg.db.Query(ctx,
 		`SELECT rf.id, rf.nombre, SUM(p.total), SUM(c.monto)
 		 FROM comisiones c
 		 JOIN pedidos p    ON p.id = c.pedido_id

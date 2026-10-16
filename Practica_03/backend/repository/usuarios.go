@@ -10,7 +10,7 @@ import (
 )
 
 // ObtenerUsuarios devuelve una página de cuentas con búsqueda server-side por nombre o correo.
-func ObtenerUsuarios(ctx context.Context, busqueda string, page, limit int) (models.Pagina, error) {
+func (pg *PostgresRepository) ObtenerUsuarios(ctx context.Context, busqueda string, page, limit int) (models.Pagina, error) {
 	pagina, limite, offset := normalizarPagina(itoa(page), itoa(limit))
 
 	q := strings.TrimSpace(busqueda)
@@ -18,11 +18,11 @@ func ObtenerUsuarios(ctx context.Context, busqueda string, page, limit int) (mod
 	const filtro = `WHERE (nombre ILIKE $1 OR email ILIKE $1)`
 
 	var total int
-	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM usuarios `+filtro, patron).Scan(&total); err != nil {
+	if err := pg.db.QueryRow(ctx, `SELECT COUNT(*) FROM usuarios `+filtro, patron).Scan(&total); err != nil {
 		return models.Pagina{}, err
 	}
 
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		`SELECT id, email, nombre, rol, activo, referido_id, creado_en
 		 FROM usuarios `+filtro+` ORDER BY id LIMIT $2 OFFSET $3`,
 		patron, limite, offset,
@@ -48,9 +48,9 @@ func ObtenerUsuarios(ctx context.Context, busqueda string, page, limit int) (mod
 
 // ActualizarUsuario cambia el rol y/o el estado activo de una cuenta (los nil no se tocan).
 // Devuelve la cuenta resultante y false si el ID no existe.
-func ActualizarUsuario(ctx context.Context, id int, rol *string, activo *bool) (models.UsuarioAdmin, bool, error) {
+func (pg *PostgresRepository) ActualizarUsuario(ctx context.Context, id int, rol *string, activo *bool) (models.UsuarioAdmin, bool, error) {
 	var u models.UsuarioAdmin
-	rows, err := db.Query(ctx,
+	rows, err := pg.db.Query(ctx,
 		`UPDATE usuarios
 		 SET rol = COALESCE($1, rol), activo = COALESCE($2, activo)
 		 WHERE id = $3

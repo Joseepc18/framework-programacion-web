@@ -14,21 +14,18 @@ import (
 	// Importamos Fiber para manejar la respuesta HTTP.
 	"github.com/gofiber/fiber/v2"
 	// Importamos el paquete config para acceder al cliente de Redis.
-	"multicatalogo-backend/config"
 	// Importamos nuestro paquete de modelos para usar la estructura APIError.
 	"multicatalogo-backend/models"
-	// Importamos el repositorio para consultar el catálogo.
-	"multicatalogo-backend/repository"
 )
 
 // GetProductos es la función controladora encargada de devolver el catálogo de artículos.
 // Aplica el patrón Cache-Aside: primero busca en Redis y solo consulta PostgreSQL si no hay caché.
-func GetProductos(c *fiber.Ctx) error {
+func (ctrl *ProductoController) GetProductos(c *fiber.Ctx) error {
 	// Con ?q=, ?page= o ?limit= respondemos paginado desde PostgreSQL ({data,page,limit,total}).
 	// Sin parámetros se mantiene el catálogo completo cacheado que consume la tienda.
 	if c.Query("q") != "" || c.Query("page") != "" || c.Query("limit") != "" {
 		pagina, limite := paginaDe(c)
-		resultado, err := repository.ObtenerProductosPagina(c.Context(), c.Query("q"), true, pagina, limite)
+		resultado, err := ctrl.repo.ObtenerProductosPagina(c.Context(), c.Query("q"), true, pagina, limite)
 		if err != nil {
 			return errorInterno(c, err)
 		}
@@ -42,13 +39,13 @@ func GetProductos(c *fiber.Ctx) error {
 	ctx := context.Background()
 
 	// 1) Cache Hit: si el catálogo está en Redis, lo devolvemos sin tocar PostgreSQL.
-	if datos, err := config.Cache.Get(ctx, clave).Bytes(); err == nil {
+	if datos, ok := ctrl.cache.Obtener(ctx, clave); ok {
 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 		return c.Send(datos)
 	}
 
 	// 2) Cache Miss: consultamos el catálogo en la base de datos.
-	productos, err := repository.ObtenerProductos()
+	productos, err := ctrl.repo.ObtenerProductos()
 	if err != nil {
 		// Si la consulta falla, respondemos HTTP 500.
 		return errorInterno(c, err)
@@ -56,7 +53,7 @@ func GetProductos(c *fiber.Ctx) error {
 
 	// 3) Guardamos el resultado serializado en Redis durante 5 minutos para las siguientes peticiones.
 	if datos, err := json.Marshal(productos); err == nil {
-		config.Cache.Set(ctx, clave, datos, ttl)
+		ctrl.cache.Guardar(ctx, clave, datos, ttl)
 	}
 
 	// Fiber convierte automáticamente el slice de estructuras a formato JSON y lo envía como respuesta al cliente.
@@ -64,7 +61,7 @@ func GetProductos(c *fiber.Ctx) error {
 }
 
 // GetProductoPorID devuelve un único producto según el ID recibido en la URL (/api/productos/:id).
-func GetProductoPorID(c *fiber.Ctx) error {
+func (ctrl *ProductoController) GetProductoPorID(c *fiber.Ctx) error {
 	// Convertimos el parámetro "id" a entero; si el usuario envía texto, Atoi devuelve un error.
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -77,7 +74,7 @@ func GetProductoPorID(c *fiber.Ctx) error {
 	}
 
 	// Buscamos el producto en el repositorio.
-	producto, ok, err := repository.ObtenerProductoPorID(id)
+	producto, ok, err := ctrl.repo.ObtenerProductoPorID(id)
 	if err != nil {
 		// Si la consulta falla, respondemos HTTP 500.
 		return errorInterno(c, err)
@@ -93,4 +90,15 @@ func GetProductoPorID(c *fiber.Ctx) error {
 
 	// Si existe, lo devolvemos con HTTP 200.
 	return c.JSON(producto)
+}
+
+// ProductoController agrupa los manejadores de su área con el repositorio y la caché inyectados al arrancar.
+type ProductoController struct {
+	repo  DBRepository
+	cache CacheRepository
+}
+
+// NuevoProductoController construye el controlador con las dependencias que recibirá.
+func NuevoProductoController(repo DBRepository, cache CacheRepository) *ProductoController {
+	return &ProductoController{repo: repo, cache: cache}
 }
