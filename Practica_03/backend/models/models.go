@@ -19,6 +19,24 @@ type Usuario struct {
 	Password string `json:"-"`
 	// Rol indica los permisos del usuario dentro del sistema (admin o cliente).
 	Rol string `json:"rol"`
+	// Nombre es el nombre visible de la cuenta.
+	Nombre string `json:"nombre"`
+	// Activo indica si la cuenta puede iniciar sesión (borrado lógico).
+	Activo bool `json:"-"`
+	// ReferidoID es el nodo de la red multinivel que representa a esta cuenta.
+	ReferidoID *int `json:"referido_id,omitempty"`
+}
+
+// RegisterRequest define el cuerpo de la petición de alta de una cuenta nueva.
+type RegisterRequest struct {
+	// Nombre es el nombre visible del nuevo usuario.
+	Nombre string `json:"nombre"`
+	// Email es el correo con el que iniciará sesión; debe ser único.
+	Email string `json:"email"`
+	// Password es la contraseña en texto plano; se guarda hasheada con bcrypt.
+	Password string `json:"password"`
+	// Ref es el código de invitación del patrocinador (opcional).
+	Ref string `json:"ref"`
 }
 
 // Producto define la estructura de los datos de un artículo en nuestro catálogo.

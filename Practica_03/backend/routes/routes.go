@@ -15,6 +15,9 @@ func SetupRoutes(app *fiber.App) {
 	// Definimos una ruta HTTP POST en "/api/login" y la enlazamos a la función Login del paquete controllers.
 	app.Post("/api/login", controllers.Login)
 
+	// Registro público de cuentas de cliente (opcionalmente con código de referido).
+	app.Post("/api/register", controllers.Register)
+
 	// Definimos una ruta HTTP GET en "/api/productos" y la enlazamos a la función GetProductos del paquete controllers.
 	app.Get("/api/productos", controllers.GetProductos)
 

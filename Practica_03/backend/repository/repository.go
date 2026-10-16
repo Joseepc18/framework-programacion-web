@@ -7,11 +7,15 @@ import (
 	"context"
 	// Importamos errors para distinguir el caso "sin resultados" de un error real.
 	"errors"
+	// Importamos strings para normalizar el código de invitación.
+	"strings"
 	// Importamos time para marcas de tiempo y códigos de pedidos.
 	"time"
 
 	// Importamos pgx para reconocer el error pgx.ErrNoRows.
 	"github.com/jackc/pgx/v5"
+	// Importamos pgconn para reconocer violaciones de unicidad (código 23505).
+	"github.com/jackc/pgx/v5/pgconn"
 	// Importamos pgxpool para recibir el pool de conexiones.
 	"github.com/jackc/pgx/v5/pgxpool"
 	// Importamos nuestro paquete de modelos para usar las estructuras Usuario, Producto y Referido.
@@ -36,9 +40,9 @@ func BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error) {
 	var u models.Usuario
 
 	err := db.QueryRow(context.Background(),
-		`SELECT id, email, password, rol FROM usuarios WHERE email = $1`,
+		`SELECT id, email, password, rol, nombre, activo, referido_id FROM usuarios WHERE email = $1`,
 		email,
-	).Scan(&u.ID, &u.Email, &u.Password, &u.Rol)
+	).Scan(&u.ID, &u.Email, &u.Password, &u.Rol, &u.Nombre, &u.Activo, &u.ReferidoID)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Usuario{}, false, nil
@@ -47,6 +51,167 @@ func BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error) {
 		return models.Usuario{}, false, err
 	}
 	return u, true, nil
+}
+
+// Errores de dominio del alta de cuentas.
+var (
+	ErrEmailYaExiste      = errors.New("el correo electrónico ya está registrado")
+	ErrCodigoInvalido     = errors.New("el código de referido no existe")
+	ErrRegistroInvalido   = errors.New("nombre, correo y contraseña son obligatorios")
+	ErrCuentaDesactivada  = errors.New("cuenta desactivada")
+)
+
+// esViolacionDeUnicidad reconoce el error 23505 de PostgreSQL (clave duplicada).
+func esViolacionDeUnicidad(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// generarCodigoPropuesto arma un código de invitación legible a partir del correo
+// (parte local en mayúsculas) y le agrega un sufijo numérico hasta que sea único.
+func generarCodigoPropuesto(ctx context.Context, tx pgx.Tx, email string) (string, error) {
+	base := strings.ToUpper(strings.SplitN(email, "@", 2)[0])
+	base = strings.Map(func(r rune) rune {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return -1
+	}, base)
+	if base == "" {
+		base = "INVITADO"
+	}
+	if len(base) > 20 {
+		base = base[:20]
+	}
+
+	for sufijo := 0; sufijo < 100; sufijo++ {
+		codigo := base
+		if sufijo > 0 {
+			codigo = base + string(rune('A'+sufijo-1))
+		}
+		var existe bool
+		err := tx.QueryRow(ctx,
+			`SELECT EXISTS (SELECT 1 FROM referidos WHERE codigo = $1)`,
+			codigo,
+		).Scan(&existe)
+		if err != nil {
+			return "", err
+		}
+		if !existe {
+			return codigo, nil
+		}
+	}
+	return base, nil
+}
+
+// CrearUsuario da de alta una cuenta de cliente junto con su nodo en la red
+// multinivel dentro de una única transacción:
+//   - con código de referido válido, el nodo cuelga del patrocinador;
+//   - sin código, cuelga de la raíz de la semilla para no romper el árbol.
+//
+// Devuelve ErrEmailYaExiste (409) o ErrCodigoInvalido (400) según el caso.
+func CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword string) (models.Usuario, error) {
+	nombre := strings.TrimSpace(req.Nombre)
+	email := strings.TrimSpace(req.Email)
+	if nombre == "" || email == "" || hashPassword == "" {
+		return models.Usuario{}, ErrRegistroInvalido
+	}
+
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return models.Usuario{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Resolvemos el patrocinador a partir del código de invitación.
+	var parentID *int
+	nivel := 0
+	codigoRef := strings.ToUpper(strings.TrimSpace(req.Ref))
+	if codigoRef != "" {
+		var padreID int
+		err := tx.QueryRow(ctx,
+			`SELECT id FROM referidos WHERE codigo = $1`,
+			codigoRef,
+		).Scan(&padreID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Usuario{}, ErrCodigoInvalido
+		}
+		if err != nil {
+			return models.Usuario{}, err
+		}
+		parentID = &padreID
+		err = tx.QueryRow(ctx,
+			`SELECT nivel FROM referidos WHERE id = $1`,
+			padreID,
+		).Scan(&nivel)
+		if err != nil {
+			return models.Usuario{}, err
+		}
+		nivel++
+	} else {
+		// Sin código: buscamos la raíz sembrada (parent_id NULL) para no crear una segunda raíz.
+		var raizID int
+		err := tx.QueryRow(ctx,
+			`SELECT id FROM referidos WHERE parent_id IS NULL ORDER BY id LIMIT 1`,
+		).Scan(&raizID)
+		if err == nil {
+			parentID = &raizID
+			nivel = 1
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return models.Usuario{}, err
+		}
+	}
+
+	// Creamos la cuenta con rol cliente y contraseña ya hasheada con bcrypt.
+	var usuarioID int
+	err = tx.QueryRow(ctx,
+		`INSERT INTO usuarios (email, password, rol, nombre) VALUES ($1, $2, 'cliente', $3) RETURNING id`,
+		email, hashPassword, nombre,
+	).Scan(&usuarioID)
+	if esViolacionDeUnicidad(err) {
+		return models.Usuario{}, ErrEmailYaExiste
+	}
+	if err != nil {
+		return models.Usuario{}, err
+	}
+
+	// Creamos el nodo de red que representará a la cuenta.
+	codigo, err := generarCodigoPropuesto(ctx, tx, email)
+	if err != nil {
+		return models.Usuario{}, err
+	}
+
+	var referidoID int
+	err = tx.QueryRow(ctx,
+		`INSERT INTO referidos (nombre, nivel, ventas, parent_id, email, codigo)
+		 VALUES ($1, $2, 0, $3, $4, $5) RETURNING id`,
+		nombre, nivel, parentID, email, codigo,
+	).Scan(&referidoID)
+	if err != nil {
+		return models.Usuario{}, err
+	}
+
+	// Enlazamos la cuenta con su nodo: es la FK que después usan las comisiones.
+	_, err = tx.Exec(ctx,
+		`UPDATE usuarios SET referido_id = $1 WHERE id = $2`,
+		referidoID, usuarioID,
+	)
+	if err != nil {
+		return models.Usuario{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return models.Usuario{}, err
+	}
+
+	return models.Usuario{
+		ID:         usuarioID,
+		Email:      email,
+		Rol:        "cliente",
+		Nombre:     nombre,
+		Activo:     true,
+		ReferidoID: &referidoID,
+	}, nil
 }
 
 // ObtenerProductos devuelve el catálogo completo ordenado por ID incluyendo el stock disponible.
@@ -197,14 +362,18 @@ func CrearPedido(ctx context.Context, email string, req models.CheckoutRequest) 
 }
 
 // ActualizarComisionesUpline suma las ventas al upline multinivel (hasta 3 niveles) en la tabla referidos.
+// El punto de partida es la FK usuarios.referido_id, no una correspondencia de IDs por email.
 func ActualizarComisionesUpline(ctx context.Context, email string, monto float64) error {
-	// Determinamos el nodo de partida. En la base semilla: cliente@upse.edu.ec mapea a Luis Poveda (id 2).
-	nodoID := 2
-	if email == "admin@upse.edu.ec" {
-		nodoID = 0
+	var nodoID *int
+	err := db.QueryRow(ctx,
+		`SELECT referido_id FROM usuarios WHERE email = $1`,
+		email,
+	).Scan(&nodoID)
+	if err != nil || nodoID == nil {
+		return nil
 	}
 
-	currentID := &nodoID
+	currentID := nodoID
 	for nivel := 1; nivel <= 3 && currentID != nil; nivel++ {
 		var parentID *int
 		err := db.QueryRow(ctx,

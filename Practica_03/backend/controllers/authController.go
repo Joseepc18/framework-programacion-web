@@ -60,6 +60,14 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
+	// Una cuenta desactivada por un administrador no puede iniciar sesión.
+	if !usuario.Activo {
+		return c.Status(fiber.StatusForbidden).JSON(models.APIError{
+			Status:  fiber.StatusForbidden,
+			Message: "Cuenta desactivada: contacte al administrador",
+		})
+	}
+
 	// Comparamos el hash de la contraseña usando bcrypt.
 	if err := bcrypt.CompareHashAndPassword([]byte(usuario.Password), []byte(req.Password)); err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{

@@ -1,6 +1,6 @@
 // src/components/Login.tsx
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth, type Rol } from "../context/AuthContext";
 import { apiFetch } from "../services/http";
 
@@ -90,6 +90,13 @@ const Login = () => {
             {loading ? "Validando..." : "Iniciar Sesión"}
           </button>
         </form>
+
+        <p className="text-center text-sm text-slate-500 mt-6">
+          ¿Aún no tienes cuenta?{" "}
+          <Link to="/registro" className="text-indigo-600 font-semibold hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
 
         <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1">
           <p className="font-semibold text-slate-700">Cuentas de prueba:</p>
