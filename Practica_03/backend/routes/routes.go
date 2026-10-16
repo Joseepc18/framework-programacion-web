@@ -24,6 +24,15 @@ func SetupRoutes(app *fiber.App) {
 	// Definimos una ruta HTTP GET en "/api/productos/:id" para obtener un producto por su ID.
 	app.Get("/api/productos/:id", controllers.GetProductoPorID)
 
+	// Catálogo administrativo: incluye productos inactivos y acepta ?q= de búsqueda.
+	app.Get("/api/admin/productos", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.GetProductosAdmin)
+
+	// Escrituras del catálogo: solo administradores y con invalidación de caché.
+	app.Post("/api/productos", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.CrearProducto)
+	app.Put("/api/productos/:id", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.ActualizarProducto)
+	// Borrado lógico: ?activar=true vuelve a publicar el producto.
+	app.Delete("/api/productos/:id", middleware.RequireAuth(), middleware.RequireAdmin(), controllers.DesactivarProducto)
+
 	// Definimos una ruta HTTP GET en "/api/health" para verificar que el servidor está operativo.
 	app.Get("/api/health", controllers.HealthCheck)
 

@@ -57,6 +57,8 @@ type Producto struct {
 	Galeria []string `json:"galeria"`
 	// Stock indica la cantidad disponible en inventario.
 	Stock int `json:"stock"`
+	// Activo indica si el producto se muestra en el catálogo (borrado lógico).
+	Activo bool `json:"activo"`
 }
 
 // ItemPedido representa un producto y su cantidad dentro del checkout.

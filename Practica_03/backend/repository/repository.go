@@ -214,10 +214,12 @@ func CrearUsuario(ctx context.Context, req models.RegisterRequest, hashPassword 
 	}, nil
 }
 
-// ObtenerProductos devuelve el catálogo completo ordenado por ID incluyendo el stock disponible.
+// ObtenerProductos devuelve el catálogo público: solo productos activos, ordenados por ID.
+// Los inactivos (borrado lógico) quedan ocultos para el cliente pero siguen en pedido_items.
 func ObtenerProductos() ([]models.Producto, error) {
 	rows, err := db.Query(context.Background(),
-		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock FROM productos ORDER BY id`,
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock
+		 FROM productos WHERE activo = TRUE ORDER BY id`,
 	)
 	if err != nil {
 		return nil, err
@@ -246,6 +248,85 @@ func ObtenerProductoPorID(id int) (models.Producto, bool, error) {
 		return models.Producto{}, false, err
 	}
 	return p, true, nil
+}
+
+// ObtenerProductosAdmin devuelve el catálogo completo (activos e inactivos)
+// para la vista administrativa, opcionalmente filtrado por un texto de búsqueda.
+func ObtenerProductosAdmin(busqueda string) ([]models.Producto, error) {
+	q := strings.TrimSpace(busqueda)
+	filas := []models.Producto{}
+	if q == "" {
+		rows, err := db.Query(context.Background(),
+			`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock, activo
+			 FROM productos ORDER BY id`)
+		if err != nil {
+			return nil, err
+		}
+		filas, err = pgx.CollectRows(rows, escanearProductoAdmin)
+		return filas, err
+	}
+
+	// ILIKE con comodín escapado: el usuario puede escribir % o _ sin romper el filtro.
+	patron := "%" + strings.ReplaceAll(strings.ReplaceAll(q, "%", "\\%"), "_", "\\_") + "%"
+	rows, err := db.Query(context.Background(),
+		`SELECT id, nombre, descripcion, precio, categoria, img, galeria, stock, activo
+		 FROM productos
+		 WHERE nombre ILIKE $1 OR categoria ILIKE $1 OR descripcion ILIKE $1
+		 ORDER BY id`, patron)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, escanearProductoAdmin)
+}
+
+// escanearProductoAdmin mapea una fila del catálogo administrativo (incluye activo).
+func escanearProductoAdmin(row pgx.CollectableRow) (models.Producto, error) {
+	var p models.Producto
+	err := row.Scan(&p.ID, &p.Nombre, &p.Descripcion, &p.Precio, &p.Categoria, &p.Img, &p.Galeria, &p.Stock, &p.Activo)
+	return p, err
+}
+
+// CrearProducto inserta un artículo del catálogo con borrado lógico activo por defecto.
+func CrearProducto(ctx context.Context, p models.Producto) (models.Producto, error) {
+	err := db.QueryRow(ctx,
+		`INSERT INTO productos (nombre, descripcion, precio, categoria, img, galeria, stock, activo)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE) RETURNING id`,
+		p.Nombre, p.Descripcion, p.Precio, p.Categoria, p.Img, p.Galeria, p.Stock,
+	).Scan(&p.ID)
+	if err != nil {
+		return models.Producto{}, err
+	}
+	p.Activo = true
+	return p, nil
+}
+
+// ActualizarProducto edita los campos del producto indicado.
+// El booleano indica si existía un producto con ese ID.
+func ActualizarProducto(ctx context.Context, id int, p models.Producto) (bool, error) {
+	res, err := db.Exec(ctx,
+		`UPDATE productos
+		 SET nombre = $1, descripcion = $2, precio = $3, categoria = $4,
+		     img = $5, galeria = $6, stock = $7
+		 WHERE id = $8`,
+		p.Nombre, p.Descripcion, p.Precio, p.Categoria, p.Img, p.Galeria, p.Stock, id,
+	)
+	if err != nil {
+		return false, err
+	}
+	return res.RowsAffected() > 0, nil
+}
+
+// CambiarEstadoProducto aplica el borrado lógico (activo = false) o lo revierte.
+// No borra la fila para conservar el historial de pedido_items.
+func CambiarEstadoProducto(ctx context.Context, id int, activo bool) (bool, error) {
+	res, err := db.Exec(ctx,
+		`UPDATE productos SET activo = $1 WHERE id = $2`,
+		activo, id,
+	)
+	if err != nil {
+		return false, err
+	}
+	return res.RowsAffected() > 0, nil
 }
 
 // Errores de dominio para el proceso de checkout
@@ -286,15 +367,19 @@ func CrearPedido(ctx context.Context, email string, req models.CheckoutRequest) 
 
 		var p models.Producto
 		err := tx.QueryRow(ctx,
-			`SELECT id, nombre, precio, stock FROM productos WHERE id = $1 FOR UPDATE`,
+			`SELECT id, nombre, precio, stock, activo FROM productos WHERE id = $1 FOR UPDATE`,
 			it.ProductoID,
-		).Scan(&p.ID, &p.Nombre, &p.Precio, &p.Stock)
+		).Scan(&p.ID, &p.Nombre, &p.Precio, &p.Stock, &p.Activo)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.PedidoConfirmado{}, errors.New("producto no encontrado en el catálogo")
 		}
 		if err != nil {
 			return models.PedidoConfirmado{}, err
+		}
+
+		if !p.Activo {
+			return models.PedidoConfirmado{}, errors.New("Producto desactivado: " + p.Nombre)
 		}
 
 		if p.Stock < it.Cantidad {

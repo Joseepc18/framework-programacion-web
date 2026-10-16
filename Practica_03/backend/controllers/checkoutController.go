@@ -41,6 +41,8 @@ func Checkout(c *fiber.Ctx) error {
 	res, err := repository.CrearPedido(c.Context(), emailAuth, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "Stock insuficiente") ||
+			strings.Contains(err.Error(), "Producto desactivado") ||
+			strings.Contains(err.Error(), "producto no encontrado") ||
 			err == repository.ErrStockInsuficiente ||
 			err == repository.ErrCantidadInvalida ||
 			err == repository.ErrCarritoVacio {

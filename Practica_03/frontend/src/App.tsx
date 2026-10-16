@@ -12,6 +12,7 @@ import Checkout from './components/Checkout';
 import Confirmacion from './components/Confirmacion';
 import Login from './components/Login';
 import Registro from './components/Registro';
+import AdminProductos from './components/AdminProductos';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -72,6 +73,7 @@ function App() {
                 <Route element={<AdminRoute />}>
                   <Route index element={<Dashboard />} />
                   <Route path="mi-red" element={<MiRed />} />
+                  <Route path="admin/productos" element={<AdminProductos />} />
                 </Route>
 
                 {/* Ambos roles: flujo de compra en línea */}

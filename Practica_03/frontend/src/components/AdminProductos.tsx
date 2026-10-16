@@ -1,0 +1,375 @@
+// src/components/AdminProductos.tsx
+// Administración del catálogo (Fase 2): tabla con búsqueda server-side (?q=),
+// alta/edición en formulario y borrado lógico con confirmación.
+import { useEffect, useState, type FormEvent } from "react";
+import type { Producto } from "../data/productos";
+import {
+  getProductosAdmin,
+  crearProducto,
+  actualizarProducto,
+  cambiarEstadoProducto,
+} from "../services/adminProductosService";
+
+// Estado vacío del formulario de alta/edición
+const PRODUCTO_VACIO = {
+  nombre: "",
+  descripcion: "",
+  precio: 0,
+  categoria: "",
+  img: "",
+  galeria: [] as string[],
+  stock: 50,
+};
+
+type FormProducto = typeof PRODUCTO_VACIO;
+
+const AdminProductos = () => {
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [busqueda, setBusqueda] = useState<string>("");
+  const [cargando, setCargando] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+
+  // Formulario (null = cerrado; con id = edición; sin id = alta)
+  const [form, setForm] = useState<(FormProducto & { id?: number }) | null>(null);
+  const [guardando, setGuardando] = useState<boolean>(false);
+  const [errorForm, setErrorForm] = useState<string>("");
+
+  const cargar = (q?: string) => {
+    setCargando(true);
+    getProductosAdmin(q)
+      .then((data) => {
+        setProductos(data);
+        setError("");
+      })
+      .catch((err) => {
+        setError(err.message || "No se pudo cargar el catálogo administrativo");
+      })
+      .finally(() => setCargando(false));
+  };
+
+  // Búsqueda server-side con debounce para no saturar la API
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      cargar(busqueda);
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busqueda]);
+
+  const abrirAlta = () => {
+    setForm({ ...PRODUCTO_VACIO, galeria: [] });
+    setErrorForm("");
+  };
+
+  const abrirEdicion = (p: Producto) => {
+    setForm({
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      precio: p.precio,
+      categoria: p.categoria,
+      img: p.img,
+      galeria: p.galeria ?? [],
+      stock: p.stock ?? 0,
+    });
+    setErrorForm("");
+  };
+
+  const guardar = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!form) return;
+    setGuardando(true);
+    setErrorForm("");
+
+    const cuerpo = {
+      nombre: form.nombre.trim(),
+      descripcion: form.descripcion.trim(),
+      precio: Number(form.precio),
+      categoria: form.categoria.trim(),
+      img: form.img.trim(),
+      galeria: form.galeria,
+      stock: Number(form.stock),
+    };
+
+    const operacion =
+      form.id === undefined
+        ? crearProducto(cuerpo)
+        : actualizarProducto(form.id, cuerpo);
+
+    operacion
+      .then(() => {
+        setForm(null);
+        cargar(busqueda);
+      })
+      .catch((err) => {
+        setErrorForm(err.message || "No se pudo guardar el producto");
+      })
+      .finally(() => setGuardando(false));
+  };
+
+  const alternarEstado = (p: Producto) => {
+    const activoActual = p.activo ?? true;
+    const accion = activoActual ? "desactivar" : "activar";
+    if (!window.confirm(`¿Desea ${accion} el producto "${p.nombre}"?`)) return;
+
+    cambiarEstadoProducto(p.id, activoActual)
+      .then(() => cargar(busqueda))
+      .catch((err) => {
+        window.alert(err.message || "No se pudo cambiar el estado");
+      });
+  };
+
+  const cambiarCampo = (campo: keyof FormProducto, valor: string | number | string[]) => {
+    setForm((prev) => (prev ? { ...prev, [campo]: valor } : prev));
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Administración de Productos</h1>
+          <p className="text-slate-500 mt-1">
+            Alta, edición y borrado lógico del catálogo.
+          </p>
+        </div>
+        <button
+          onClick={abrirAlta}
+          className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+        >
+          + Nuevo producto
+        </button>
+      </div>
+
+      {/* Búsqueda server-side */}
+      <div className="mb-4">
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre, categoría o descripción..."
+          className="w-full sm:w-96 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none"
+        />
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+          {error}
+        </div>
+      )}
+
+      {/* Tarjetas en móvil, tabla en escritorio */}
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        {cargando ? (
+          <p className="p-6 text-slate-500">Cargando catálogo...</p>
+        ) : productos.length === 0 ? (
+          <p className="p-6 text-slate-500">No hay productos que coincidan con la búsqueda.</p>
+        ) : (
+          <>
+            {/* Tabla (escritorio) */}
+            <table className="hidden md:table w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                <tr>
+                  <th className="text-left p-3">Producto</th>
+                  <th className="text-left p-3">Categoría</th>
+                  <th className="text-right p-3">Precio</th>
+                  <th className="text-right p-3">Stock</th>
+                  <th className="text-center p-3">Estado</th>
+                  <th className="text-right p-3">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {productos.map((p) => (
+                  <tr key={p.id} className={p.activo === false ? "bg-slate-50 opacity-70" : ""}>
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <img src={p.img} alt={p.nombre} className="w-10 h-10 rounded object-cover" />
+                        <span className="font-medium text-slate-800">{p.nombre}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-slate-600">{p.categoria}</td>
+                    <td className="p-3 text-right">${p.precio.toFixed(2)}</td>
+                    <td className="p-3 text-right">{p.stock ?? 0}</td>
+                    <td className="p-3 text-center">
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          p.activo === false
+                            ? "bg-red-100 text-red-700"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {p.activo === false ? "Inactivo" : "Activo"}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right space-x-2 whitespace-nowrap">
+                      <button
+                        onClick={() => abrirEdicion(p)}
+                        className="text-indigo-600 hover:underline font-medium"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => alternarEstado(p)}
+                        className={p.activo === false ? "text-green-600 hover:underline font-medium" : "text-red-600 hover:underline font-medium"}
+                      >
+                        {p.activo === false ? "Activar" : "Desactivar"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Tarjetas (móvil) */}
+            <ul className="md:hidden divide-y divide-slate-100">
+              {productos.map((p) => (
+                <li key={p.id} className="p-4">
+                  <div className="flex items-center gap-3">
+                    <img src={p.img} alt={p.nombre} className="w-12 h-12 rounded object-cover" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-800">{p.nombre}</p>
+                      <p className="text-sm text-slate-500">
+                        {p.categoria} · ${p.precio.toFixed(2)} · Stock: {p.stock ?? 0}
+                      </p>
+                      <span
+                        className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          p.activo === false
+                            ? "bg-red-100 text-red-700"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {p.activo === false ? "Inactivo" : "Activo"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-4">
+                    <button
+                      onClick={() => abrirEdicion(p)}
+                      className="text-indigo-600 hover:underline font-medium text-sm"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => alternarEstado(p)}
+                      className={p.activo === false ? "text-green-600 hover:underline font-medium text-sm" : "text-red-600 hover:underline font-medium text-sm"}
+                    >
+                      {p.activo === false ? "Activar" : "Desactivar"}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+
+      {/* ===== FORMULARIO (modal) ===== */}
+      {form && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">
+              {form.id === undefined ? "Nuevo producto" : `Editar producto #${form.id}`}
+            </h2>
+
+            {errorForm && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+                {errorForm}
+              </div>
+            )}
+
+            <form onSubmit={guardar} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  value={form.nombre}
+                  onChange={(e) => cambiarCampo("nombre", e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                <textarea
+                  value={form.descripcion}
+                  onChange={(e) => cambiarCampo("descripcion", e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Precio ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={form.precio}
+                    onChange={(e) => cambiarCampo("precio", Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Stock</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.stock}
+                    onChange={(e) => cambiarCampo("stock", Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
+                <input
+                  type="text"
+                  value={form.categoria}
+                  onChange={(e) => cambiarCampo("categoria", e.target.value)}
+                  placeholder="Serum, Crema, Tónico..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL de imagen</label>
+                <input
+                  type="url"
+                  value={form.img}
+                  onChange={(e) => cambiarCampo("img", e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={guardando}
+                  className="flex-1 bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                >
+                  {guardando ? "Guardando..." : "Guardar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminProductos;
