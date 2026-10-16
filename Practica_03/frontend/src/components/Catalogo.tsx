@@ -9,6 +9,8 @@ import { useCart } from '../context/CartContext';
 import { getProductos } from '../services/productosService';
 import { categorias, type Producto } from '../data/productos';
 
+const POR_PAGINA = 8;
+
 const Catalogo = () => {
   const { addToCart } = useCart();
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -44,8 +46,18 @@ const Catalogo = () => {
     });
   }, [productos, busqueda, categoria]);
 
+  // Paginación sobre la lista ya filtrada (el catálogo completo llega cacheado desde la API)
+  const [pagina, setPagina] = useState<number>(1);
+  const totalPaginas = Math.max(1, Math.ceil(productosFiltrados.length / POR_PAGINA));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const productosPagina = productosFiltrados.slice(
+    (paginaActual - 1) * POR_PAGINA,
+    paginaActual * POR_PAGINA
+  );
+
   const handleCategoriaChange = (value: string) => {
     setCategoria(value);
+    setPagina(1);
     // Sincronizamos el query string para que la URL sea compartible
     if (value === "Todas") {
       setSearchParams({});
@@ -70,7 +82,10 @@ const Catalogo = () => {
         <input
           type="text"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => {
+            setBusqueda(e.target.value);
+            setPagina(1);
+          }}
           placeholder="Buscar por nombre o descripción..."
           className="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition"
         />
@@ -107,7 +122,7 @@ const Catalogo = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {productosFiltrados.map((prod) => (
+          {productosPagina.map((prod) => (
             <div
               key={prod.id}
               className="bg-white rounded-lg overflow-hidden border border-slate-200 shadow-sm flex flex-col"
@@ -141,6 +156,29 @@ const Catalogo = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ===== PAGINACIÓN ===== */}
+      {totalPaginas > 1 && (
+        <div className="flex items-center justify-between mt-8 text-sm">
+          <button
+            onClick={() => setPagina(Math.max(1, paginaActual - 1))}
+            disabled={paginaActual === 1}
+            className="px-4 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+          >
+            Anterior
+          </button>
+          <span className="text-slate-500">
+            Página {paginaActual} de {totalPaginas}
+          </span>
+          <button
+            onClick={() => setPagina(Math.min(totalPaginas, paginaActual + 1))}
+            disabled={paginaActual === totalPaginas}
+            className="px-4 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+          >
+            Siguiente
+          </button>
         </div>
       )}
     </div>

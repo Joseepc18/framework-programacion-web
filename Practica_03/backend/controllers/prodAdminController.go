@@ -7,8 +7,6 @@ import (
 	"context"
 	// Importamos strconv para convertir el ID de la URL a número.
 	"strconv"
-	// Importamos strings para validar y limpiar los campos recibidos.
-	"strings"
 
 	// Importamos el framework Fiber para manejar la petición y la respuesta.
 	"github.com/gofiber/fiber/v2"
@@ -160,17 +158,7 @@ func (ctrl *ProductoController) DesactivarProducto(c *fiber.Ctx) error {
 
 // validarProducto aplica las mismas reglas en alta y edición.
 func validarProducto(p models.Producto) string {
-	camposVacios := []string{}
-	if strings.TrimSpace(p.Nombre) == "" {
-		camposVacios = append(camposVacios, "nombre")
-	}
-	if strings.TrimSpace(p.Categoria) == "" {
-		camposVacios = append(camposVacios, "categoria")
-	}
-	if strings.TrimSpace(p.Img) == "" {
-		camposVacios = append(camposVacios, "img")
-	}
-	if len(camposVacios) > 0 {
+	if len(camposVacios(campo{"nombre", p.Nombre}, campo{"categoria", p.Categoria}, campo{"img", p.Img})) > 0 {
 		return "Nombre, categoría e imagen son obligatorios"
 	}
 	if p.Precio <= 0 {

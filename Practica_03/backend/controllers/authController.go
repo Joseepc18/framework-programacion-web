@@ -2,9 +2,6 @@
 package controllers
 
 import (
-	// Importamos strings para limpiar espacios en blanco de los campos recibidos.
-	"strings"
-
 	// Importamos bcrypt para la verificación criptográfica de contraseñas.
 	"golang.org/x/crypto/bcrypt"
 
@@ -29,21 +26,9 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Acumulamos los campos obligatorios que llegaron vacíos.
-	camposVacios := []string{}
-	if strings.TrimSpace(req.Email) == "" {
-		camposVacios = append(camposVacios, "email")
-	}
-	if strings.TrimSpace(req.Password) == "" {
-		camposVacios = append(camposVacios, "password")
-	}
-
-	if len(camposVacios) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
-			Status:  fiber.StatusBadRequest,
-			Message: "El email y la contraseña son obligatorios",
-			Details: fiber.Map{"camposVacios": camposVacios},
-		})
+	// Validación central de campos obligatorios.
+	if vacios := camposVacios(campo{"email", req.Email}, campo{"password", req.Password}); len(vacios) > 0 {
+		return respuestaCamposVacios(c, "El email y la contraseña son obligatorios", vacios)
 	}
 
 	// Buscamos el usuario por correo electrónico en la base de datos.
@@ -75,7 +60,7 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 	}
 
 	// Generamos el token JWT real firmado por 2 horas.
-	token, err := middleware.GenerarToken(usuario.ID, usuario.Email, usuario.Rol)
+	token, err := middleware.GenerarToken(ctrl.secreto, usuario.ID, usuario.Email, usuario.Rol)
 	if err != nil {
 		return errorInterno(c, err)
 	}
@@ -84,12 +69,14 @@ func (ctrl *AuthController) Login(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"token": token, "email": usuario.Email, "rol": usuario.Rol})
 }
 
-// AuthController agrupa los manejadores de su área con el repositorio inyectado al arrancar.
+// AuthController agrupa login y registro con sus dependencias inyectadas al arrancar.
 type AuthController struct {
-	repo DBRepository
+	repo    DBRepository
+	secreto []byte
+	mailer  Mailer
 }
 
-// NuevoAuthController construye el controlador con las dependencias que recibirá.
-func NuevoAuthController(repo DBRepository) *AuthController {
-	return &AuthController{repo: repo}
+// NuevoAuthController construye el controlador con el repositorio, la clave JWT y el mailer.
+func NuevoAuthController(repo DBRepository, secreto []byte, mailer Mailer) *AuthController {
+	return &AuthController{repo: repo, secreto: secreto, mailer: mailer}
 }

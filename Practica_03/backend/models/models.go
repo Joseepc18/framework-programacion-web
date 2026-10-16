@@ -221,6 +221,8 @@ type Liquidacion struct {
 	CreadoEn time.Time `json:"creado_en"`
 	// PagadaEn es el momento del pago efectivo (null si sigue pendiente).
 	PagadaEn *time.Time `json:"pagada_en,omitempty"`
+	// Periodo es el mes que cubre el pago (AAAA-MM).
+	Periodo string `json:"periodo"`
 	// CantidadComisiones indica cuántas filas del ledger cubrió este pago.
 	CantidadComisiones int `json:"cantidad_comisiones"`
 }

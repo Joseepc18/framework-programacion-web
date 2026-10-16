@@ -28,6 +28,8 @@ type DBRepository interface {
 
 // UsuarioRepository cubre cuentas: login, registro y administración.
 type UsuarioRepository interface {
+	// CuentaActiva indica si la cuenta existe y está habilitada (lo consulta RequireAuth en cada petición).
+	CuentaActiva(ctx context.Context, usuarioID int) (bool, error)
 	// BuscarUsuarioPorEmail devuelve la cuenta con su hash de contraseña para verificar el login.
 	BuscarUsuarioPorEmail(email string) (models.Usuario, bool, error)
 	// CrearUsuario da de alta una cuenta de cliente y su nodo de red en una transacción.
@@ -114,4 +116,13 @@ type CacheRepository interface {
 	Eliminar(ctx context.Context, claves ...string)
 	// Ping comprueba que la caché responde (health check).
 	Ping(ctx context.Context) error
+}
+
+// Mailer es el contrato de los correos transaccionales. Los controladores lo reciben
+// inyectado; en desarrollo basta una implementación que escriba en el log.
+type Mailer interface {
+	// EnviarBienvenida avisa a un usuario recién registrado.
+	EnviarBienvenida(ctx context.Context, nombre, email string)
+	// EnviarConfirmacionPedido confirma una compra al comprador.
+	EnviarConfirmacionPedido(ctx context.Context, email, numero string, total float64)
 }

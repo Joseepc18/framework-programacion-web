@@ -26,23 +26,22 @@ func (ctrl *AuthController) Register(c *fiber.Ctx) error {
 		})
 	}
 
+	// El código de invitación también puede llegar como query (?ref=CODIGO), igual que el link del frontend.
+	if strings.TrimSpace(req.Ref) == "" {
+		req.Ref = c.Query("ref")
+	}
+
 	// Validamos los campos obligatorios antes de tocar la base de datos.
-	camposVacios := []string{}
-	if strings.TrimSpace(req.Nombre) == "" {
-		camposVacios = append(camposVacios, "nombre")
+	if vacios := camposVacios(
+		campo{"nombre", req.Nombre}, campo{"email", req.Email}, campo{"password", req.Password},
+	); len(vacios) > 0 {
+		return respuestaCamposVacios(c, "Nombre, correo y contraseña son obligatorios", vacios)
 	}
-	if strings.TrimSpace(req.Email) == "" {
-		camposVacios = append(camposVacios, "email")
+	if !emailValido(req.Email) {
+		return respuestaInvalida(c, "El correo electrónico no tiene un formato válido", "email")
 	}
-	if strings.TrimSpace(req.Password) == "" {
-		camposVacios = append(camposVacios, "password")
-	}
-	if len(camposVacios) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(models.APIError{
-			Status:  fiber.StatusBadRequest,
-			Message: "Nombre, correo y contraseña son obligatorios",
-			Details: fiber.Map{"camposVacios": camposVacios},
-		})
+	if len(req.Password) < 6 {
+		return respuestaInvalida(c, "La contraseña debe tener al menos 6 caracteres", "password")
 	}
 
 	// Hasheamos la contraseña con bcrypt (el costo por defecto, 10 rondas).
@@ -75,6 +74,8 @@ func (ctrl *AuthController) Register(c *fiber.Ctx) error {
 			return errorInterno(c, err)
 		}
 	}
+
+	ctrl.mailer.EnviarBienvenida(c.Context(), usuario.Nombre, usuario.Email)
 
 	// 201 Created: devolvemos la cuenta creada (sin la contraseña).
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

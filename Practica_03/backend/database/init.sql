@@ -85,7 +85,9 @@ CREATE TABLE IF NOT EXISTS liquidaciones (
     estado      VARCHAR(20)    NOT NULL DEFAULT 'pendiente'
                 CHECK (estado IN ('pendiente', 'pagada')),
     creado_en   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
-    pagada_en   TIMESTAMPTZ
+    pagada_en   TIMESTAMPTZ,
+    -- Mes que cubre el pago (AAAA-MM), útil para el estado de cuenta del distribuidor.
+    periodo     VARCHAR(7)     NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM')
 );
 
 -- Registro contable (ledger) de cada comisión generada por un pedido.
@@ -109,24 +111,30 @@ CREATE INDEX IF NOT EXISTS idx_comisiones_referido_pedido ON comisiones (referid
 CREATE INDEX IF NOT EXISTS idx_comisiones_pedido          ON comisiones (pedido_id);
 CREATE INDEX IF NOT EXISTS idx_comisiones_liquidacion     ON comisiones (liquidacion_id);
 
+-- Índices de consultas frecuentes: árbol por parent_id, pedidos por comprador, detalle por pedido y filtro por categoría.
+CREATE INDEX IF NOT EXISTS idx_referidos_parent       ON referidos (parent_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_cliente_email  ON pedidos (cliente_email);
+CREATE INDEX IF NOT EXISTS idx_pedido_items_pedido    ON pedido_items (pedido_id);
+CREATE INDEX IF NOT EXISTS idx_productos_categoria    ON productos (categoria);
+
 -- Datos semilla de la red. Se insertan de arriba hacia abajo para respetar la clave foránea.
--- El admin representa la raíz y el cliente el nodo de tercer nivel (vínculo por email).
+-- El admin representa la raíz (nodo 0) y el cliente demo a Luis Poveda (nodo 2), vinculados por email.
 INSERT INTO referidos (id, nombre, nivel, ventas, codigo, email, parent_id) VALUES
     (0, 'Tú',            0, 2400, 'TU',     'admin@upse.edu.ec',    NULL),
     (1, 'Ana García',    1, 1200, 'ANA',    NULL,                   0),
-    (2, 'Luis Poveda',   1,  850, 'LUIS',   NULL,                   0),
+    (2, 'Luis Poveda',   1,  850, 'LUIS',   'cliente@upse.edu.ec',  0),
     (3, 'Marta Sánchez', 1,  430, 'MARTA',  NULL,                   0),
     (4, 'Carlos Ruiz',   2,  500, 'CARLOS', NULL,                   1),
     (5, 'Sofía León',    2,  430, 'SOFIA',  NULL,                   1),
     (6, 'Marco Díaz',    2,  380, 'MARCO',  NULL,                   2),
-    (7, 'Diana Paz',     3,  300, 'DIANA',  'cliente@upse.edu.ec',  4)
+    (7, 'Diana Paz',     3,  300, 'DIANA',  NULL,                   4)
 ON CONFLICT (id) DO NOTHING;
 
 -- Datos semilla de cuentas con contraseñas encriptadas mediante bcrypt.
 -- referido_id enlaza cada cuenta con su nodo de la red por el email.
 INSERT INTO usuarios (id, email, password, rol, nombre, referido_id) VALUES
     (1, 'admin@upse.edu.ec',   crypt('123456', gen_salt('bf', 10)), 'admin',    'Administrador', 0),
-    (2, 'cliente@upse.edu.ec', crypt('123456', gen_salt('bf', 10)), 'cliente',  'Cliente Demo',  7)
+    (2, 'cliente@upse.edu.ec', crypt('123456', gen_salt('bf', 10)), 'cliente',  'Cliente Demo',  2)
 ON CONFLICT (email) DO NOTHING;
 
 -- Datos semilla del catálogo: los 8 productos que usa el frontend.

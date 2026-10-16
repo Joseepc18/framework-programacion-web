@@ -66,10 +66,10 @@ func (pg *PostgresRepository) CrearLiquidacion(ctx context.Context, referidoID i
 	err = tx.QueryRow(ctx,
 		`INSERT INTO liquidaciones (referido_id, total, estado, pagada_en)
 		 VALUES ($1, $2, 'pagada', NOW())
-		 RETURNING id, referido_id, total, estado, creado_en, pagada_en`,
+		 RETURNING id, referido_id, total, estado, creado_en, pagada_en, periodo`,
 		referidoID, total,
 	).Scan(&liquidacion.ID, &liquidacion.ReferidoID, &liquidacion.Total,
-		&liquidacion.Estado, &liquidacion.CreadoEn, &liquidacion.PagadaEn)
+		&liquidacion.Estado, &liquidacion.CreadoEn, &liquidacion.PagadaEn, &liquidacion.Periodo)
 	if err != nil {
 		return models.Liquidacion{}, err
 	}
@@ -100,7 +100,7 @@ func aPlata(valor float64) float64 {
 // liquidacionesSelect trae el histórico con el nombre del distribuidor y la
 // cantidad de comisiones que cubrió cada pago.
 const liquidacionesSelect = `SELECT l.id, l.referido_id, r.nombre, l.total, l.estado,
-	l.creado_en, l.pagada_en,
+	l.creado_en, l.pagada_en, l.periodo,
 	(SELECT COUNT(*) FROM comisiones c WHERE c.liquidacion_id = l.id)
 	FROM liquidaciones l
 	JOIN referidos r ON r.id = l.referido_id`
@@ -164,7 +164,7 @@ func coleccionLiquidaciones(rows pgx.Rows) ([]models.Liquidacion, error) {
 	for rows.Next() {
 		var l models.Liquidacion
 		if err := rows.Scan(&l.ID, &l.ReferidoID, &l.Nombre, &l.Total, &l.Estado,
-			&l.CreadoEn, &l.PagadaEn, &l.CantidadComisiones); err != nil {
+			&l.CreadoEn, &l.PagadaEn, &l.Periodo, &l.CantidadComisiones); err != nil {
 			return nil, err
 		}
 		items = append(items, l)
