@@ -228,6 +228,34 @@ type DeudaComisiones struct {
 	Cantidad int `json:"cantidad"`
 }
 
+// ResumenVentas agrega los KPIs de negocio de un periodo (pedidos no cancelados).
+type ResumenVentas struct {
+	// TotalVendido es la suma de total de los pedidos del periodo.
+	TotalVendido float64 `json:"total_vendido"`
+	// NumPedidos es la cantidad de pedidos del periodo.
+	NumPedidos int `json:"num_pedidos"`
+	// TicketPromedio es TotalVendido / NumPedidos (0 si no hay pedidos).
+	TicketPromedio float64 `json:"ticket_promedio"`
+	// ComisionesDevengadas es la suma del ledger generado en el periodo, sin las revertidas.
+	ComisionesDevengadas float64 `json:"comisiones_devengadas"`
+}
+
+// TopProducto es una fila del ranking de productos por ingresos.
+type TopProducto struct {
+	ProductoID int     `json:"producto_id"`
+	Nombre     string  `json:"nombre"`
+	Unidades   int     `json:"unidades"`
+	Ingresos   float64 `json:"ingresos"`
+}
+
+// TopReferido es una fila del ranking de distribuidores por ventas generadas en su red.
+type TopReferido struct {
+	ReferidoID int     `json:"referido_id"`
+	Nombre     string  `json:"nombre"`
+	VentasRed  float64 `json:"ventas_red"`
+	Comisiones float64 `json:"comisiones"`
+}
+
 // Referido define un nodo del árbol de la red multinivel.
 type Referido struct {
 	// ID es el identificador único del referido.
