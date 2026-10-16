@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	// Importamos log para reportar errores fatales de arranque.
 	"log"
 	// Importamos os y os/signal para detectar cuando se detiene la aplicación (Ctrl+C).
@@ -20,6 +21,7 @@ import (
 	"multicatalogo-backend/config"
 	// Importamos los controladores que se van a instanciar al arrancar.
 	"multicatalogo-backend/controllers"
+	"multicatalogo-backend/mailer"
 	// Importamos el repositorio para inyectarle la conexión a la base de datos.
 	"multicatalogo-backend/repository"
 	// Importamos nuestro propio paquete de rutas para delegarle la configuración de los endpoints.
@@ -44,21 +46,36 @@ func main() {
 	// Cerramos el cliente de Redis cuando main termine.
 	defer func() { _ = almacen.Cerrar() }()
 
+	// La clave JWT es obligatoria (salvo APP_ENV=dev): sin ella no se firman tokens seguros.
+	secreto, err := config.CargarJWTSecret()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// --- Inyección de dependencias (Tema 4) ---
 	// Construimos una sola vez las implementaciones concretas...
 	repositorio := repository.Nuevo(pool)
+	correo := mailer.NuevoLog()
+
+	// Una cuenta desactivada pierde acceso aunque su token no haya expirado; ante un error de base se deniega.
+	cuentaActiva := func(ctx context.Context, usuarioID int) bool {
+		activa, err := repositorio.CuentaActiva(ctx, usuarioID)
+		return err == nil && activa
+	}
 
 	// ...y se las pasamos a cada controlador, que solo conoce las interfaces que necesita.
 	manejadores := routes.Manejadores{
-		Auth:          controllers.NuevoAuthController(repositorio),
+		Auth:          controllers.NuevoAuthController(repositorio, secreto, correo),
 		Productos:     controllers.NuevoProductoController(repositorio, almacen),
 		Red:           controllers.NuevoRedController(repositorio, almacen),
-		Checkout:      controllers.NuevoCheckoutController(repositorio, almacen),
+		Checkout:      controllers.NuevoCheckoutController(repositorio, almacen, correo),
 		Health:        controllers.NuevoHealthController(repositorio, almacen),
 		Pedidos:       controllers.NuevoPedidoController(repositorio, almacen),
 		Liquidaciones: controllers.NuevoLiquidacionController(repositorio),
 		Reportes:      controllers.NuevoReporteController(repositorio),
 		Usuarios:      controllers.NuevoUsuarioController(repositorio),
+		JWTSecret:     secreto,
+		CuentaActiva:  cuentaActiva,
 	}
 
 	// Instanciamos una nueva aplicación de Fiber y la guardamos en la variable 'app'.

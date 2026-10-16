@@ -70,3 +70,20 @@ func (pg *PostgresRepository) ActualizarUsuario(ctx context.Context, id int, rol
 	}
 	return u, true, nil
 }
+
+// CuentaActiva indica si la cuenta existe y está habilitada. Una cuenta inexistente cuenta como inactiva.
+func (pg *PostgresRepository) CuentaActiva(ctx context.Context, usuarioID int) (bool, error) {
+	var activo bool
+	rows, err := pg.db.Query(ctx, `SELECT activo FROM usuarios WHERE id = $1`, usuarioID)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return false, rows.Err()
+	}
+	if err := rows.Scan(&activo); err != nil {
+		return false, err
+	}
+	return activo, nil
+}

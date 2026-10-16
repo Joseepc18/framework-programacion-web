@@ -2,7 +2,7 @@
 package middleware
 
 import (
-	"os"
+	"context"
 	"strings"
 	"time"
 
@@ -11,17 +11,12 @@ import (
 	"multicatalogo-backend/models"
 )
 
-// ObtenerSecretoJWT devuelve la clave para firmar y validar tokens JWT.
-func ObtenerSecretoJWT() []byte {
-	secreto := os.Getenv("JWT_SECRET")
-	if secreto == "" {
-		return []byte("multicatalogo-jwt-super-secret-key-2026")
-	}
-	return []byte(secreto)
-}
+// CuentaActiva indica si la cuenta con ese ID sigue existiendo y habilitada.
+// Si no se puede comprobar (error de base de datos), debe devolver false: se falla cerrado.
+type CuentaActiva func(ctx context.Context, usuarioID int) bool
 
 // GenerarToken crea un token firmado con HS256 y duración de 2 horas.
-func GenerarToken(userID int, email, rol string) (string, error) {
+func GenerarToken(secreto []byte, userID int, email, rol string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"email": email,
@@ -31,57 +26,61 @@ func GenerarToken(userID int, email, rol string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(ObtenerSecretoJWT())
+	return token.SignedString(secreto)
 }
 
-// RequireAuth intercepta la petición y valida la existencia y firma del Bearer token JWT.
-func RequireAuth() fiber.Handler {
+// noAutorizado responde 401 con el contrato estándar de errores.
+func noAutorizado(c *fiber.Ctx, mensaje string) error {
+	return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
+		Status:  fiber.StatusUnauthorized,
+		Message: mensaje,
+	})
+}
+
+// RequireAuth valida la firma y la vigencia del Bearer token JWT y, además, que la cuenta
+// siga activa: desactivar a un usuario corta su sesión de inmediato, sin esperar a que el token expire.
+// La identidad verificada queda en c.Locals para los controladores.
+func RequireAuth(secreto []byte, activa CuentaActiva) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
-				Status:  fiber.StatusUnauthorized,
-				Message: "Token de autorización no proporcionado",
-			})
+			return noAutorizado(c, "Token de autorización no proporcionado")
 		}
 
 		partes := strings.SplitN(authHeader, " ", 2)
 		if len(partes) != 2 || !strings.EqualFold(partes[0], "Bearer") {
-			return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
-				Status:  fiber.StatusUnauthorized,
-				Message: "Formato de token inválido. Use 'Bearer <token>'",
-			})
+			return noAutorizado(c, "Formato de token inválido. Use 'Bearer <token>'")
 		}
 
-		tokenStr := strings.TrimSpace(partes[1])
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(strings.TrimSpace(partes[1]), func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fiber.ErrUnauthorized
 			}
-			return ObtenerSecretoJWT(), nil
+			return secreto, nil
 		})
-
 		if err != nil || !token.Valid {
-			return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
-				Status:  fiber.StatusUnauthorized,
-				Message: "Token inválido o expirado",
-			})
+			return noAutorizado(c, "Token inválido o expirado")
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			return c.Status(fiber.StatusUnauthorized).JSON(models.APIError{
-				Status:  fiber.StatusUnauthorized,
-				Message: "Claims de token inválidos",
-			})
+			return noAutorizado(c, "Claims de token inválidos")
+		}
+
+		sub, ok := claims["sub"].(float64)
+		if !ok {
+			return noAutorizado(c, "Claims de token inválidos")
+		}
+		usuarioID := int(sub)
+
+		if activa != nil && !activa(c.Context(), usuarioID) {
+			return noAutorizado(c, "Cuenta desactivada o inexistente")
 		}
 
 		// Guardamos la identidad autenticada en locals para uso en controladores
 		c.Locals("email", claims["email"])
 		c.Locals("rol", claims["rol"])
-		if sub, ok := claims["sub"].(float64); ok {
-			c.Locals("usuario_id", int(sub))
-		}
+		c.Locals("usuario_id", usuarioID)
 
 		return c.Next()
 	}

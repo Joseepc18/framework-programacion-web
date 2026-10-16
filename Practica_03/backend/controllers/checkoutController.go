@@ -62,6 +62,8 @@ func (ctrl *CheckoutController) Checkout(c *fiber.Ctx) error {
 	// Invalidamos la caché en Redis tras la mutación de inventario
 	ctrl.cache.Eliminar(context.Background(), "productos:all", "red:tree:"+emailAuth)
 
+	ctrl.mailer.EnviarConfirmacionPedido(c.Context(), emailAuth, res.Numero, res.Total)
+
 	// Disparamos la actualización del upline en una goroutine con contexto propio
 	go func(email string, total float64) {
 		ctx := context.Background()
@@ -73,11 +75,12 @@ func (ctrl *CheckoutController) Checkout(c *fiber.Ctx) error {
 
 // CheckoutController agrupa los manejadores de su área con el repositorio y la caché inyectados al arrancar.
 type CheckoutController struct {
-	repo  DBRepository
-	cache CacheRepository
+	repo   DBRepository
+	cache  CacheRepository
+	mailer Mailer
 }
 
-// NuevoCheckoutController construye el controlador con las dependencias que recibirá.
-func NuevoCheckoutController(repo DBRepository, cache CacheRepository) *CheckoutController {
-	return &CheckoutController{repo: repo, cache: cache}
+// NuevoCheckoutController construye el controlador con el repositorio, la caché y el mailer.
+func NuevoCheckoutController(repo DBRepository, cache CacheRepository, mailer Mailer) *CheckoutController {
+	return &CheckoutController{repo: repo, cache: cache, mailer: mailer}
 }
