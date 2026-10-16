@@ -20,6 +20,6 @@ WORKDIR /app
 COPY --from=build /out/api /app/api
 
 # Puerto en el que escucha la API (ver main.go).
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["/app/api"]

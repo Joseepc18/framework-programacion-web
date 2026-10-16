@@ -65,8 +65,12 @@ func main() {
 		_ = app.Shutdown()
 	}()
 
-	// Ponemos a la aplicación a escuchar peticiones en el puerto 3000 de la máquina local. (Bloquea el hilo de ejecución).
-	if err := app.Listen(":3000"); err != nil {
+	// Escuchamos en el puerto 3001 (3000 lo ocupa otro proyecto); se puede cambiar con la variable PORT.
+	puerto := os.Getenv("PORT")
+	if puerto == "" {
+		puerto = "3001"
+	}
+	if err := app.Listen(":" + puerto); err != nil {
 		log.Println(err)
 	}
 }
