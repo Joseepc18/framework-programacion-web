@@ -19,7 +19,7 @@ const Layout = () => {
   const closeMobileMenu = () => setIsMobileOpen(false);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="app-layout flex bg-slate-50">
       <Sidebar
         isCollapsed={isCollapsed}
         isMobileOpen={isMobileOpen}
@@ -35,10 +35,12 @@ const Layout = () => {
       )}
 
       {/* Área de contenido principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         <Navbar toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8">
-          <Outlet />
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8">
+          <div className="mx-auto w-full max-w-[1600px]">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

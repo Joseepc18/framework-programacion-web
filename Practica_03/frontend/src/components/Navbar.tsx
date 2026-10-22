@@ -22,27 +22,28 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8">
-      <div className="flex items-center gap-2 md:gap-4">
+    <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between gap-2 px-4 md:px-8">
+      <div className="min-w-0 flex items-center gap-2 md:gap-4">
         {/* Botón Hamburguesa siempre visible */}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-md hover:bg-slate-100 transition text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="min-h-11 min-w-11 shrink-0 flex items-center justify-center rounded-md hover:bg-slate-100 transition text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label="Alternar menú"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h2 className="text-slate-600 font-medium text-base md:text-lg hidden sm:block">
+        <h2 className="truncate text-slate-600 font-medium text-base md:text-lg hidden sm:block">
           {user?.rol === "admin" ? "Panel de Administración" : "Tienda MultiCatálogo"}
         </h2>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-6">
+      <div className="shrink-0 flex items-center gap-4 md:gap-6">
         <Link
           to="/carrito"
-          className="relative p-2 hover:bg-slate-100 rounded-full transition"
+          aria-label="Ver carrito"
+          className="relative min-h-11 min-w-11 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
         >
           <span className="text-xl">🛒</span>
           {totalItems > 0 && (
@@ -53,7 +54,7 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
         </Link>
 
         <div className="flex items-center gap-2 md:gap-4">
-          <span className="text-xs md:text-sm text-slate-500 hidden sm:block">{user?.email}</span>
+          <span className="max-w-32 truncate text-xs md:text-sm text-slate-500 hidden sm:block">{user?.email}</span>
           <span
             className={`hidden md:inline-block text-xs font-semibold px-2 py-1 rounded-full uppercase ${
               user?.rol === "admin"
@@ -68,14 +69,11 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
             {/* Avatar: al hacer click abre/cierra el menú (funciona en móvil y escritorio) */}
             <button
               onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-300 flex items-center justify-center"
+              className="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold uppercase flex items-center justify-center border border-slate-300"
               aria-label="Menú de usuario"
+              aria-expanded={userMenuOpen}
             >
-              <img
-                src="https://fastly.picsum.photos/id/64/4326/2884.jpg?hmac=9_SzX666YRpR_fOyYStXpfSiJ_edO3ghlSRnH2w09Kg"
-                alt="Avatar del usuario"
-                className="w-full h-full object-cover"
-              />
+              {user?.email?.charAt(0) ?? "?"}
             </button>
 
             {userMenuOpen && (
