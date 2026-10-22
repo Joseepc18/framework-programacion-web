@@ -1,5 +1,6 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { limpiarCacheApi } from '../services/pwaCache';
 
 // 1. Tipos de rol que maneja la aplicación
 export type Rol = 'admin' | 'cliente';
@@ -76,6 +77,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem(STORAGE_KEY);
+    void limpiarCacheApi();
   };
 
   return (
