@@ -1,9 +1,9 @@
 import { defineConfig } from '@vite-pwa/assets-generator/config'
 
-// Genera los PNG de la PWA a partir de public/favicon.svg (que no es cuadrado: 48x46).
-// Cada tamaño se dibuja centrado sobre un lienzo cuadrado con fondo de marca.
+// Genera los PNG de la PWA a partir del SVG cuadrado de 512 px.
+// La bolsa original queda dentro del círculo seguro del icono maskable.
 // Comando: npm run generate-pwa-assets
-const background = '#1a1033'
+const background = '#4f35ff'
 
 export default defineConfig({
   headLinkOptions: { preset: '2023' },
@@ -11,16 +11,16 @@ export default defineConfig({
     transparent: {
       sizes: [192, 512],
       favicons: [[48, 'favicon.ico']],
-      padding: 0.1,
+      padding: 0,
     },
     maskable: {
       sizes: [512],
-      padding: 0.3,
+      padding: 0,
       resizeOptions: { background, fit: 'contain' },
     },
     apple: {
       sizes: [180],
-      padding: 0.3,
+      padding: 0,
       resizeOptions: { background, fit: 'contain' },
     },
     assetName: (type, size) => {
