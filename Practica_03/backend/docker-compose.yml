@@ -49,6 +49,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       REDIS_ADDR: redis:6379
+      # La clave JWT es obligatoria: se lee del .env del host (el .env no entra a la imagen).
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET en backend/.env}
+      APP_ENV: ${APP_ENV:-}
     ports:
       # API en http://localhost:3001 (el 3000 lo ocupa otro proyecto).
       - "3001:3001"
