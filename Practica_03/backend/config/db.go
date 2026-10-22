@@ -6,6 +6,8 @@ import (
 	"context"
 	// Importamos fmt para construir la cadena de conexión y envolver errores.
 	"fmt"
+	"net"
+	"net/url"
 	// Importamos os para leer las variables de entorno.
 	"os"
 	// Importamos time para definir el tiempo máximo de espera.
@@ -23,15 +25,7 @@ func ConectarDB() (*pgxpool.Pool, error) {
 	// Cargamos el .env; si no existe, se usan las variables de entorno del sistema.
 	_ = godotenv.Load()
 
-	// Construimos la cadena de conexión con los datos del entorno.
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-	)
+	dsn := cadenaConexionDB()
 
 	// Creamos un contexto con un límite de 5 segundos para no bloquear el arranque indefinidamente.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -50,4 +44,24 @@ func ConectarDB() (*pgxpool.Pool, error) {
 	}
 
 	return pool, nil
+}
+
+// DATABASE_URL permite usar la conexión entregada por el proveedor, incluido su modo SSL.
+func cadenaConexionDB() string {
+	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+		return dsn
+	}
+	modoSSL := os.Getenv("DB_SSLMODE")
+	if modoSSL == "" {
+		modoSSL = "disable"
+	}
+	conexion := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD")),
+		Host:   net.JoinHostPort(os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
+		Path:   "/" + os.Getenv("DB_NAME"),
+	}
+	parametros := url.Values{"sslmode": {modoSSL}}
+	conexion.RawQuery = parametros.Encode()
+	return conexion.String()
 }

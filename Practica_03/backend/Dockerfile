@@ -14,6 +14,8 @@ RUN CGO_ENABLED=0 go build -o /out/api .
 # Etapa 2: imagen final mínima, solo con el binario.
 FROM alpine:latest
 
+RUN apk add --no-cache ca-certificates
+
 WORKDIR /app
 
 # El binario ya trae todo lo necesario; no se copia el código fuente.
