@@ -1,10 +1,9 @@
 // src/components/Login.tsx
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Download } from "lucide-react";
 import { useAuth, type Rol } from "../context/AuthContext";
 import { apiFetch } from "../services/http";
-import { useInstallPrompt } from "../hooks/useInstallPrompt";
+import InstalarApp from './InstalarApp';
 
 const Login = () => {
   const [email, setEmail] = useState<string>("");
@@ -14,7 +13,6 @@ const Login = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { puedeInstalar, instalar } = useInstallPrompt();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -94,17 +92,7 @@ const Login = () => {
           </button>
         </form>
 
-        {puedeInstalar && (
-          <button
-            id="login-install-app"
-            type="button"
-            onClick={instalar}
-            className="mt-4 w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg border border-indigo-600 text-indigo-600 font-semibold py-3 hover:bg-indigo-50 transition"
-          >
-            <Download size={18} />
-            Instalar app
-          </button>
-        )}
+        <InstalarApp ubicacion="login" />
 
         <p className="text-center text-sm text-slate-500 mt-6">
           ¿Aún no tienes cuenta?{" "}

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import InstalarApp from './InstalarApp';
 
 // Definimos la interfaz para las props
 interface NavbarProps {
@@ -39,7 +40,8 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
         </h2>
       </div>
 
-      <div className="shrink-0 flex items-center gap-4 md:gap-6">
+      <div className="shrink-0 flex items-center gap-2 md:gap-4">
+        <InstalarApp ubicacion="navbar" />
         <Link
           to="/carrito"
           aria-label="Ver carrito"
