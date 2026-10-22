@@ -103,9 +103,14 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
         ${isCollapsed ? "md:w-20" : "md:w-64"}
       `}
     >
-      <div className={`p-4 md:p-6 text-xl font-bold border-b border-slate-700 flex items-center ${isCollapsed ? 'md:justify-center' : 'justify-start'} whitespace-nowrap`}>
-        <span className="md:hidden">MultiCatálogo</span>
-        <span className="hidden md:inline">{isCollapsed ? "MC" : "MultiCatálogo"}</span>
+      <div className={`p-4 md:p-6 border-b border-slate-700 flex flex-col ${isCollapsed ? 'md:items-center' : 'items-start'} whitespace-nowrap`}>
+        <div className="text-xl font-bold">
+          <span className="md:hidden">MultiCatálogo</span>
+          <span className="hidden md:inline">{isCollapsed ? "MC" : "MultiCatálogo"}</span>
+        </div>
+        <p className={`mt-1 text-sm font-medium text-white/90 ${isCollapsed ? 'md:hidden' : ''}`}>
+          Jose Ponce Carlos
+        </p>
       </div>
 
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
