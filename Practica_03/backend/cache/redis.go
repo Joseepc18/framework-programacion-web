@@ -27,20 +27,19 @@ type Redis struct {
 	cliente *redis.Client
 }
 
-// NuevoRedis carga el .env, crea el cliente apuntando a REDIS_ADDR y verifica con un ping
+// NuevoRedis carga el .env, crea el cliente desde REDIS_URL o REDIS_ADDR y verifica con un ping
 // que el servidor de caché esté disponible. Quien la llama debe cerrar con Cerrar().
 func NuevoRedis() (*Redis, error) {
 	// Cargamos el .env; si no existe, se usan las variables de entorno del sistema.
 	_ = godotenv.Load()
 
-	// Leemos el host:puerto de Redis; por defecto el contenedor local expuesto en 6379.
-	addr := os.Getenv("REDIS_ADDR")
-	if addr == "" {
-		addr = "localhost:6379"
+	opciones, err := opcionesRedis()
+	if err != nil {
+		return nil, err
 	}
 
 	// Creamos el cliente de conexión a Redis.
-	cliente := redis.NewClient(&redis.Options{Addr: addr})
+	cliente := redis.NewClient(opciones)
 
 	// Limitamos la espera del ping inicial para no bloquear el arranque indefinidamente.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -53,6 +52,22 @@ func NuevoRedis() (*Redis, error) {
 	}
 
 	return &Redis{cliente: cliente}, nil
+}
+
+func opcionesRedis() (*redis.Options, error) {
+	if direccion := os.Getenv("REDIS_URL"); direccion != "" {
+		opciones, err := redis.ParseURL(direccion)
+		if err != nil {
+			// No incluimos la URL en el error porque puede contener credenciales.
+			return nil, fmt.Errorf("REDIS_URL no válida; use redis:// o rediss://")
+		}
+		return opciones, nil
+	}
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
+	return &redis.Options{Addr: addr}, nil
 }
 
 // Obtener devuelve el valor guardado en la clave; el booleano indica si existía.

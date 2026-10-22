@@ -8,6 +8,7 @@ import (
 	// Importamos os y os/signal para detectar cuando se detiene la aplicación (Ctrl+C).
 	"os"
 	"os/signal"
+	"strings"
 	// Importamos syscall para escuchar también la señal de terminación del sistema.
 	"syscall"
 
@@ -80,11 +81,18 @@ func main() {
 
 	// Instanciamos una nueva aplicación de Fiber y la guardamos en la variable 'app'.
 	app := fiber.New()
+	origenes := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if origenes == "" {
+		origenes = "http://localhost:5173,http://127.0.0.1:5173"
+	}
+	if strings.Contains(origenes, "*") {
+		log.Fatal("CORS_ALLOWED_ORIGINS requiere orígenes explícitos, sin comodines")
+	}
 
 	// Implementamos el middleware CORS a nivel global usando app.Use() para interceptar todas las peticiones entrantes.
 	app.Use(cors.New(cors.Config{
-		// Configuramos el CORS para permitir peticiones provenientes del frontend local.
-		AllowOrigins: "http://localhost:5173, http://127.0.0.1:5173",
+		// En producción se indican los orígenes HTTPS del frontend separados por comas.
+		AllowOrigins: origenes,
 		// Declaramos de forma explícita qué cabeceras se permitirán, incluyendo Authorization para el token JWT.
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
