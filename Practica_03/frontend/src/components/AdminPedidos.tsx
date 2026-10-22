@@ -220,28 +220,30 @@ const AdminPedidos = () => {
                           </div>
                         </div>
 
-                        <table className="w-full text-sm">
-                          <thead className="text-slate-500 text-xs uppercase">
-                            <tr>
-                              <th className="text-left p-2">Producto</th>
-                              <th className="text-right p-2">Cant.</th>
-                              <th className="text-right p-2">Precio</th>
-                              <th className="text-right p-2">Subtotal</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200">
-                            {detalle.items.map((it) => (
-                              <tr key={it.producto_id}>
-                                <td className="p-2 text-slate-700">{it.nombre}</td>
-                                <td className="p-2 text-right">{it.cantidad}</td>
-                                <td className="p-2 text-right">${it.precio_unitario.toFixed(2)}</td>
-                                <td className="p-2 text-right font-medium">
-                                  ${it.subtotal.toFixed(2)}
-                                </td>
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[420px] text-sm">
+                            <thead className="text-slate-500 text-xs uppercase">
+                              <tr>
+                                <th className="text-left p-2">Producto</th>
+                                <th className="text-right p-2">Cant.</th>
+                                <th className="text-right p-2">Precio</th>
+                                <th className="text-right p-2">Subtotal</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {detalle.items.map((it) => (
+                                <tr key={it.producto_id}>
+                                  <td className="p-2 text-slate-700">{it.nombre}</td>
+                                  <td className="p-2 text-right">{it.cantidad}</td>
+                                  <td className="p-2 text-right">${it.precio_unitario.toFixed(2)}</td>
+                                  <td className="p-2 text-right font-medium">
+                                    ${it.subtotal.toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-sm text-red-600">No se pudo cargar el detalle.</p>

@@ -38,7 +38,7 @@ const Storefront = () => {
           <p className="text-sm md:text-base uppercase tracking-widest text-indigo-200 mb-4">
             Catálogo de venta multinivel
           </p>
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold leading-tight mb-6 break-words">
             Belleza que se comparte,{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-pink-300">
               ganancias que crecen

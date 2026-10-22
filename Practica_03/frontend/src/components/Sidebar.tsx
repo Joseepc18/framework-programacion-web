@@ -96,7 +96,7 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
   return (
     <aside
       className={`
-        fixed inset-y-0 left-0 z-50 transform bg-green-500 text-white flex flex-col transition-all duration-300 ease-in-out
+        mobile-sidebar fixed inset-y-0 left-0 z-50 shrink-0 transform bg-green-500 text-white flex flex-col transition-all duration-300 ease-in-out
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         w-64
         md:relative md:translate-x-0
