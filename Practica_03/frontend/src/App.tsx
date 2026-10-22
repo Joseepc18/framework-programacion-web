@@ -18,6 +18,7 @@ import AdminPedidos from './components/AdminPedidos';
 import MisComisiones from './components/MisComisiones';
 import AdminLiquidaciones from './components/AdminLiquidaciones';
 import AdminUsuarios from './components/AdminUsuarios';
+import ReloadPrompt from './components/ReloadPrompt';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -102,6 +103,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        <ReloadPrompt />
       </CartBoundary>
     </AuthProvider>
   );
