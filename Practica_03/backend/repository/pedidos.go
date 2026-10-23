@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	// Importamos pgx para leer filas con sus tipos nativos de PostgreSQL.
 	"github.com/jackc/pgx/v5"
@@ -48,6 +49,13 @@ func normalizarPagina(pageStr, limitStr string) (int, int, int) {
 // itoa convierte un entero a texto para reutilizar normalizarPagina.
 func itoa(n int) string {
 	return strconv.Itoa(n)
+}
+
+// numeroDePedido arma el código legible del pedido: MC-AAMMDD-<id>.
+// El id es único, de modo que dos pedidos nunca comparten número aunque
+// se creen en el mismo instante.
+func numeroDePedido(creado time.Time, pedidoID int) string {
+	return "MC-" + creado.Format("060102") + "-" + strconv.Itoa(pedidoID)
 }
 
 // seleccionPedidos define las columnas comunes a cabecera de pedido.
@@ -267,6 +275,21 @@ func (pg *PostgresRepository) CambiarEstadoPedido(ctx context.Context, id int, n
 			 SET stock = stock + i.cantidad
 			 FROM pedido_items i
 			 WHERE i.pedido_id = $1 AND p.id = i.producto_id`,
+			id,
+		); err != nil {
+			return models.Pedido{}, err
+		}
+
+		// El contador de cada nodo debe seguir igual al ledger vigente: restamos
+		// lo que se va a revertir ANTES de marcar las filas como revertidas.
+		if _, err := tx.Exec(ctx,
+			`UPDATE referidos r
+			 SET comisiones = GREATEST(r.comisiones - c.monto, 0)
+			 FROM (SELECT referido_id, SUM(monto) AS monto
+			       FROM comisiones
+			       WHERE pedido_id = $1 AND estado IN ('pendiente', 'aprobada')
+			       GROUP BY referido_id) c
+			 WHERE r.id = c.referido_id`,
 			id,
 		); err != nil {
 			return models.Pedido{}, err

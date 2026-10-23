@@ -404,18 +404,27 @@ func (pg *PostgresRepository) CrearPedido(ctx context.Context, usuarioID *int, e
 		})
 	}
 
-	numeroPedido := "MC-" + time.Now().Format("060102150405")
-
 	// Insertamos la cabecera del pedido asegurando que la identidad cliente_email
 	// provenga del token verificado y que usuario_id apunte al dueño real.
+	// El número legible se completa justo después con el id del pedido.
 	var pedidoID int
 	err = tx.QueryRow(ctx,
-		`INSERT INTO pedidos (numero, cliente_nombre, cliente_email, cliente_direccion, cliente_ciudad, cliente_telefono, metodo_pago, total, usuario_id, estado)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pendiente')
+		`INSERT INTO pedidos (cliente_nombre, cliente_email, cliente_direccion, cliente_ciudad, cliente_telefono, metodo_pago, total, usuario_id, estado)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendiente')
 		 RETURNING id`,
-		numeroPedido, req.Nombre, email, req.Direccion, req.Ciudad, req.Telefono, req.MetodoPago, total, usuarioID,
+		req.Nombre, email, req.Direccion, req.Ciudad, req.Telefono, req.MetodoPago, total, usuarioID,
 	).Scan(&pedidoID)
 	if err != nil {
+		return models.PedidoConfirmado{}, err
+	}
+
+	// La fecha sola no basta: dos compras en el mismo segundo recibían el mismo número.
+	// El id es único, así que añadirlo garantiza un número distinto por pedido.
+	numeroPedido := numeroDePedido(time.Now(), pedidoID)
+	if _, err := tx.Exec(ctx,
+		`UPDATE pedidos SET numero = $1 WHERE id = $2`,
+		numeroPedido, pedidoID,
+	); err != nil {
 		return models.PedidoConfirmado{}, err
 	}
 
