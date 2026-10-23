@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { getProductos } from '../services/productosService';
-import { categorias, type Producto } from '../data/productos';
+import type { Producto } from '../data/productos';
+import ImagenProducto from './ImagenProducto';
 
 const POR_PAGINA = 8;
 
@@ -46,6 +47,13 @@ const Catalogo = () => {
     });
   }, [productos, busqueda, categoria]);
 
+  // Categorías reales del catálogo con su cantidad de productos (no una lista fija).
+  const categorias = useMemo(() => {
+    const conteo = new Map<string, number>();
+    for (const p of productos) conteo.set(p.categoria, (conteo.get(p.categoria) ?? 0) + 1);
+    return [...conteo.entries()].sort((a, b) => a[0].localeCompare(b[0], "es"));
+  }, [productos]);
+
   // Paginación sobre la lista ya filtrada (el catálogo completo llega cacheado desde la API)
   const [pagina, setPagina] = useState<number>(1);
   const totalPaginas = Math.max(1, Math.ceil(productosFiltrados.length / POR_PAGINA));
@@ -72,40 +80,47 @@ const Catalogo = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">Catálogo de Productos</h1>
+      <h1 className="text-3xl uppercase text-marino-700 mb-2">Catálogo de Productos</h1>
       <p className="text-slate-500 mb-6">
         {productosFiltrados.length} producto(s) encontrado(s)
       </p>
 
-      {/* ===== BARRA DE BÚSQUEDA Y FILTROS ===== */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <input
-          type="text"
-          value={busqueda}
-          onChange={(e) => {
-            setBusqueda(e.target.value);
-            setPagina(1);
-          }}
-          placeholder="Buscar por nombre o descripción..."
-          className="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition"
-        />
-        <select
-          value={categoria}
-          onChange={(e) => handleCategoriaChange(e.target.value)}
-          className="px-4 py-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition"
-        >
-          <option value="Todas">Todas las categorías</option>
-          {categorias.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
+      {/* ===== BÚSQUEDA ===== */}
+      <input
+        type="text"
+        value={busqueda}
+        onChange={(e) => {
+          setBusqueda(e.target.value);
+          setPagina(1);
+        }}
+        placeholder="Buscar por nombre o descripción..."
+        className="mb-4 w-full px-4 py-3 border border-linea bg-papel focus:ring-2 focus:ring-marino-700 focus:border-marino-700 outline-none transition"
+      />
+
+      {/* ===== FILTRO POR CATEGORÍA ===== */}
+      <div className="mb-8 flex flex-wrap gap-2" role="group" aria-label="Filtrar por categoría">
+        {[["Todas", productos.length] as const, ...categorias].map(([cat, cantidad]) => {
+          const activa = categoria === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => handleCategoriaChange(cat)}
+              aria-pressed={activa}
+              className={`min-h-11 border px-4 text-sm font-semibold uppercase tracking-wider transition ${
+                activa
+                  ? "border-marino-700 bg-marino-700 text-arena-200"
+                  : "border-linea bg-papel text-marino-700 hover:border-marino-700"
+              }`}
+            >
+              {cat} <span className={activa ? "text-coral-400" : "text-slate-500"}>{cantidad}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ===== GRILLA DE PRODUCTOS ===== */}
       {productosFiltrados.length === 0 ? (
-        <div className="bg-white p-10 rounded-lg border border-slate-200 text-center">
+        <div className="bg-papel p-10 border border-linea text-center">
           <p className="text-slate-500">
             No hay productos que coincidan con tu búsqueda.
           </p>
@@ -115,7 +130,7 @@ const Catalogo = () => {
               setCategoria("Todas");
               setSearchParams({});
             }}
-            className="mt-4 text-indigo-600 font-semibold hover:underline"
+            className="mt-4 text-coral-600 font-semibold underline underline-offset-4 hover:text-coral-700"
           >
             Limpiar filtros
           </button>
@@ -125,31 +140,31 @@ const Catalogo = () => {
           {productosPagina.map((prod) => (
             <div
               key={prod.id}
-              className="bg-white rounded-lg overflow-hidden border border-slate-200 shadow-sm flex flex-col"
+              className="bg-papel overflow-hidden border border-linea flex flex-col"
             >
               <Link to={`/producto/${prod.id}`}>
-                <img
+                <ImagenProducto
                   src={prod.img}
                   alt={prod.nombre}
-                  className="w-full h-40 object-cover hover:opacity-90 transition"
+                  className="w-full h-44 object-cover hover:opacity-90 transition"
                 />
               </Link>
               <div className="p-4 flex flex-col flex-1">
-                <p className="text-xs uppercase tracking-wide text-indigo-500 font-semibold">
+                <p className="text-xs uppercase tracking-widest text-coral-600 font-semibold">
                   {prod.categoria}
                 </p>
                 <Link to={`/producto/${prod.id}`}>
-                  <h3 className="font-semibold text-slate-700 hover:text-indigo-600 transition">
+                  <h3 className="font-display text-lg text-tinta hover:text-marino-600 transition">
                     {prod.nombre}
                   </h3>
                 </Link>
-                <p className="text-indigo-600 font-bold mt-2 mb-4">
+                <p className="text-marino-700 font-semibold mt-2 mb-4">
                   ${prod.precio.toFixed(2)}
                 </p>
 
                 <button
                   onClick={() => addToCart(prod)}
-                  className="mt-auto w-full min-h-11 bg-slate-900 text-white py-2 rounded text-sm hover:bg-indigo-600 transition"
+                  className="mt-auto w-full min-h-11 bg-marino-700 text-arena-200 py-2 text-sm hover:bg-marino-800 transition"
                 >
                   Añadir al Carrito
                 </button>
@@ -165,7 +180,7 @@ const Catalogo = () => {
           <button
             onClick={() => setPagina(Math.max(1, paginaActual - 1))}
             disabled={paginaActual === 1}
-            className="px-4 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-4 py-2 min-h-11 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Anterior
           </button>
@@ -175,7 +190,7 @@ const Catalogo = () => {
           <button
             onClick={() => setPagina(Math.min(totalPaginas, paginaActual + 1))}
             disabled={paginaActual === totalPaginas}
-            className="px-4 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-4 py-2 min-h-11 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Siguiente
           </button>
