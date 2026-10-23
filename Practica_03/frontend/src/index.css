@@ -1,4 +1,94 @@
 @import "tailwindcss";
+@import "@fontsource-variable/newsreader";
+@import "@fontsource-variable/public-sans";
+
+/* Identidad de JP Mercantil: crema, verde oscuro y arcilla. Las escalas indigo y
+   slate de Tailwind se redefinen sobre esta paleta para que ninguna pantalla
+   conserve el aspecto anterior mientras se rediseña pantalla por pantalla. */
+@theme {
+  --font-sans: "Public Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader Variable", Georgia, "Times New Roman", serif;
+
+  --color-crema: #f6f1e7;
+  --color-papel: #fbf8f1;
+  --color-linea: #d9d1c0;
+  --color-tinta: #1c1b19;
+  --color-piedra: #8a8478;
+
+  --color-verde-50: #eef3ee;
+  --color-verde-100: #dbe6dc;
+  --color-verde-200: #b9cdbc;
+  --color-verde-300: #8eab94;
+  --color-verde-400: #5f8468;
+  --color-verde-500: #3f6650;
+  --color-verde-600: #2b4d3b;
+  --color-verde-700: #1f3a2e;
+  --color-verde-800: #172c23;
+  --color-verde-900: #0f1e18;
+  --color-verde-950: #0a140f;
+
+  --color-arcilla-50: #fbf1ec;
+  --color-arcilla-100: #f5dfd3;
+  --color-arcilla-200: #ebbfa8;
+  --color-arcilla-300: #dd987a;
+  --color-arcilla-400: #cc7549;
+  --color-arcilla-500: #b4532a;
+  --color-arcilla-600: #96431f;
+  --color-arcilla-700: #783519;
+  --color-arcilla-800: #5a2813;
+  --color-arcilla-900: #3d1b0d;
+
+  --color-indigo-50: var(--color-verde-50);
+  --color-indigo-100: var(--color-verde-100);
+  --color-indigo-200: var(--color-verde-200);
+  --color-indigo-300: var(--color-verde-300);
+  --color-indigo-400: var(--color-verde-400);
+  --color-indigo-500: var(--color-verde-500);
+  --color-indigo-600: var(--color-verde-600);
+  --color-indigo-700: var(--color-verde-700);
+  --color-indigo-800: var(--color-verde-800);
+  --color-indigo-900: var(--color-verde-900);
+  --color-indigo-950: var(--color-verde-950);
+
+  --color-slate-50: #f8f4ec;
+  --color-slate-100: #efe9dc;
+  --color-slate-200: #ddd5c3;
+  --color-slate-300: #c4baa5;
+  --color-slate-400: #9b917d;
+  --color-slate-500: #7a7163;
+  --color-slate-600: #5c554a;
+  --color-slate-700: #433e36;
+  --color-slate-800: #2b2823;
+  --color-slate-900: #1c1b19;
+  --color-slate-950: #121110;
+
+  /* Bordes casi rectos y sin sombras difusas: la separación la dan las líneas. */
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.25rem;
+  --radius-2xl: 0.375rem;
+
+  --shadow-sm: 0 1px 0 rgb(28 27 25 / 0.07);
+  --shadow-md: 0 0 0 1px rgb(28 27 25 / 0.12);
+  --shadow-lg: 0 0 0 1px rgb(28 27 25 / 0.14);
+  --shadow-xl: 0 0 0 1px rgb(28 27 25 / 0.18);
+  --shadow-2xl: 0 0 0 1px rgb(28 27 25 / 0.22);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-crema);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
+}
 
 /* Respeta el notch y las barras del sistema cuando la PWA está instalada */
 body {
