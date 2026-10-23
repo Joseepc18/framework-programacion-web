@@ -19,7 +19,7 @@ const Layout = () => {
   const closeMobileMenu = () => setIsMobileOpen(false);
 
   return (
-    <div className="app-layout flex bg-slate-50">
+    <div className="app-layout flex bg-crema">
       <Sidebar
         isCollapsed={isCollapsed}
         isMobileOpen={isMobileOpen}
@@ -30,7 +30,7 @@ const Layout = () => {
       {isMobileOpen && (
         <div
           onClick={closeMobileMenu}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-tinta/60 z-40 md:hidden"
         />
       )}
 

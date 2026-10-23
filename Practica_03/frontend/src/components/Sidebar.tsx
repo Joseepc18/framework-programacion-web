@@ -1,6 +1,7 @@
 // src/components/Sidebar.tsx
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Logo from "./Logo";
 
 // NUEVO: Agregamos la función a la interfaz de props
 interface SidebarProps {
@@ -96,24 +97,26 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
   return (
     <aside
       className={`
-        mobile-sidebar fixed inset-y-0 left-0 z-50 shrink-0 transform border-r border-slate-200 bg-white text-slate-600 flex flex-col transition-all duration-300 ease-in-out
+        mobile-sidebar fixed inset-y-0 left-0 z-50 shrink-0 transform border-r border-verde-900 bg-verde-700 text-verde-200 flex flex-col transition-all duration-300 ease-in-out
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         w-64
         md:relative md:translate-x-0
         ${isCollapsed ? "md:w-20" : "md:w-64"}
       `}
     >
-      <div className={`p-4 md:p-6 border-b border-slate-200 flex flex-col ${isCollapsed ? 'md:items-center' : 'items-start'} whitespace-nowrap`}>
-        <div className="text-xl font-bold text-indigo-700">
-          <span className="md:hidden">MultiCatálogo</span>
-          <span className="hidden md:inline">{isCollapsed ? "MC" : "MultiCatálogo"}</span>
-        </div>
-        <p className={`mt-1 text-sm font-medium text-slate-500 ${isCollapsed ? 'md:hidden' : ''}`}>
+      <div className={`px-4 py-5 md:px-5 border-b border-white/10 flex flex-col ${isCollapsed ? 'md:items-center md:px-3' : 'items-start'} whitespace-nowrap`}>
+        <span className="md:hidden">
+          <Logo tono="claro" />
+        </span>
+        <span className="hidden md:inline">
+          <Logo tono="claro" conNombre={!isCollapsed} />
+        </span>
+        <p className={`mt-3 text-[11px] uppercase tracking-widest text-verde-300 ${isCollapsed ? 'md:hidden' : ''}`}>
           Jose Ponce Carlos
         </p>
       </div>
 
-      <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+      <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto">
         {items.map((item) => {
           // Resaltamos la opción activa según la ruta actual
           const esActivo =
@@ -127,15 +130,15 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
               to={item.to}
               onClick={closeMobileMenu}
               aria-current={esActivo ? 'page' : undefined}
-              className={`flex items-center gap-3 p-3 rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              className={`flex items-center gap-3 px-4 py-3 border-l-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-arcilla-300 ${
                 esActivo
-                  ? "bg-indigo-50 text-indigo-700 font-semibold"
-                  : "hover:bg-slate-50 hover:text-slate-900"
-              } ${isCollapsed ? 'md:justify-center' : ''}`}
+                  ? "border-arcilla-400 bg-white/10 text-crema font-semibold"
+                  : "border-transparent hover:bg-white/5 hover:text-crema"
+              } ${isCollapsed ? 'md:justify-center md:px-0' : ''}`}
               title={item.title}
             >
-              <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={item.icon} />
               </svg>
               <span className={`whitespace-nowrap ${isCollapsed ? 'md:hidden' : ''}`}>
                 {item.label}
@@ -145,7 +148,7 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
         })}
       </nav>
 
-      <div className="p-3 border-t border-slate-200 text-xs text-slate-500">
+      <div className="px-4 py-3 border-t border-white/10 text-[11px] uppercase tracking-widest text-verde-300">
         {isCollapsed ? (
           <p className="text-center uppercase">{user?.rol}</p>
         ) : (
