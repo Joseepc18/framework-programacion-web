@@ -49,17 +49,61 @@ const PRODUCTOS_NUEVOS = [
   { nombre: 'Mascarilla de Arcilla Verde', categoria: 'Mascarilla', precio: 24, stock: 28, descripcion: 'Arcilla purificante para piel mixta o grasa. Controla el brillo y afina los poros.' },
   { nombre: 'Crema Corporal de Cacao', categoria: 'Crema', precio: 21.9, stock: 6, descripcion: 'Manteca de cacao y vitamina E para piel seca. Absorción rápida, aroma suave.' },
   { nombre: 'Set de Viaje Hidratación', categoria: 'Kit', precio: 39, stock: 15, descripcion: 'Cuatro formatos de 30 ml para llevar la rutina básica en el equipaje de mano.' },
-  { nombre: 'Mochila Escolar Reforzada', categoria: 'Utiles Escolares', precio: 32.5, stock: 18, descripcion: 'Tres compartimentos, espalda acolchada y base impermeable. Cabe un portátil de 14 pulgadas.' },
-  { nombre: 'Set de Marcadores Pastel x12', categoria: 'Utiles Escolares', precio: 8.9, stock: 60, descripcion: 'Doce tonos suaves de punta doble, fina y gruesa. Tinta a base de agua, sin olor.' },
-  { nombre: 'Calculadora Científica 240 Funciones', categoria: 'Utiles Escolares', precio: 24.5, stock: 14, descripcion: 'Pantalla de dos líneas con fracciones, estadística y ecuaciones. Permitida en exámenes.' },
-  { nombre: 'Lámpara de Escritorio LED', categoria: 'Hogar', precio: 27.9, stock: 22, descripcion: 'Brazo flexible, tres temperaturas de luz y regulación táctil. Carga USB incluida.' },
-  { nombre: 'Juego de Sábanas de Algodón', categoria: 'Hogar', precio: 45, stock: 10, descripcion: 'Cama de dos plazas, algodón peinado de 200 hilos. Incluye funda de almohada.' },
-  { nombre: 'Termo de Acero Inoxidable 750 ml', categoria: 'Hogar', precio: 18.5, stock: 35, descripcion: 'Mantiene el frío 24 horas y el calor 12. Tapa hermética y asa de transporte.' },
-  { nombre: 'Audífonos Inalámbricos', categoria: 'Tecnología', precio: 39.9, stock: 25, descripcion: 'Bluetooth 5.3, cancelación básica de ruido y hasta 30 horas con el estuche.' },
-  { nombre: 'Cargador USB-C 30 W', categoria: 'Tecnología', precio: 16.5, stock: 40, descripcion: 'Carga rápida para celular y tableta. Compacto, con protección contra sobrecalentamiento.' },
-  { nombre: 'Parlante Bluetooth Portátil', categoria: 'Tecnología', precio: 34, stock: 3, descripcion: 'Resistente al agua, 12 horas de batería y micrófono integrado. Quedan pocas unidades.' },
-  { nombre: 'Bandas Elásticas de Resistencia x3', categoria: 'Deportes', precio: 12.9, stock: 30, descripcion: 'Tres niveles de tensión para entrenar en casa. Incluye bolsa de transporte.' },
-  { nombre: 'Colchoneta de Yoga Antideslizante', categoria: 'Deportes', precio: 22, stock: 17, descripcion: 'Espesor de 6 mm, superficie texturizada y correa para cargarla.' },
+  { nombre: 'Mochila Escolar Reforzada', categoria: 'Utiles Escolares', precio: 32.5, stock: 18, descripcion: 'Tres compartimentos, espalda acolchada y base impermeable. Cabe un portátil de 14 pulgadas.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/School_bag_backpack.jpg/960px-School_bag_backpack.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Back_to_school_snacks_water_bottle_notebook_backpack_%2820503811429%29.jpg/960px-Back_to_school_snacks_water_bottle_notebook_backpack_%2820503811429%29.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/9/91/Backpacks_for_Guatemala_BGMC_01.jpg',
+    ] },
+  { nombre: 'Set de Marcadores Pastel x12', categoria: 'Utiles Escolares', precio: 8.9, stock: 60, descripcion: 'Doce tonos suaves de punta doble, fina y gruesa. Tinta a base de agua, sin olor.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Colored_whiteboard_markers_in_case.jpg/960px-Colored_whiteboard_markers_in_case.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Colored_markers_%2812258455276%29.jpg/960px-Colored_markers_%2812258455276%29.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Highlighting_pens.jpg/960px-Highlighting_pens.jpg',
+    ] },
+  { nombre: 'Calculadora Científica 240 Funciones', categoria: 'Utiles Escolares', precio: 24.5, stock: 14, descripcion: 'Pantalla de dos líneas con fracciones, estadística y ecuaciones. Permitida en exámenes.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Casio_fx-991MS.jpg/960px-Casio_fx-991MS.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Sharp_Scientific_Calculator.jpg/960px-Sharp_Scientific_Calculator.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/8/81/Casio_fx-991MS_scientific_calculator_1aa.jpg',
+    ] },
+  { nombre: 'Lámpara de Escritorio LED', categoria: 'Hogar', precio: 27.9, stock: 22, descripcion: 'Brazo flexible, tres temperaturas de luz y regulación táctil. Carga USB incluida.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/7/71/Concise_bamboo_eye_protection_LED_desk_lamp.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Battery_powered_LED_desk_lamp-7420.jpg/960px-Battery_powered_LED_desk_lamp-7420.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Dekala_Arches%E2%84%A2_Smart_Lamp.jpg/960px-Dekala_Arches%E2%84%A2_Smart_Lamp.jpg',
+    ] },
+  { nombre: 'Juego de Sábanas de Algodón', categoria: 'Hogar', precio: 45, stock: 10, descripcion: 'Cama de dos plazas, algodón peinado de 200 hilos. Incluye funda de almohada.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Bettwaesche.jpg/960px-Bettwaesche.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Silk_Bedsheet.jpg/960px-Silk_Bedsheet.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Bed_in_Seattle_hotel.jpg/960px-Bed_in_Seattle_hotel.jpg',
+    ] },
+  { nombre: 'Termo de Acero Inoxidable 750 ml', categoria: 'Hogar', precio: 18.5, stock: 35, descripcion: 'Mantiene el frío 24 horas y el calor 12. Tapa hermética y asa de transporte.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Thermos_flask_Termoverken.jpg/960px-Thermos_flask_Termoverken.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/%D0%A2%D0%B5%D1%80%D0%BC%D0%BE%D1%81_%281%29.jpg/960px-%D0%A2%D0%B5%D1%80%D0%BC%D0%BE%D1%81_%281%29.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Vintage_Aladdin_Vacuum_Flas.jpg/960px-Vintage_Aladdin_Vacuum_Flas.jpg',
+    ] },
+  { nombre: 'Audífonos Inalámbricos', categoria: 'Tecnología', precio: 39.9, stock: 25, descripcion: 'Bluetooth 5.3, cancelación básica de ruido y hasta 30 horas con el estuche.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/2023_S%C5%82uchawki_Sony_WI-XB400_%281%29.jpg/960px-2023_S%C5%82uchawki_Sony_WI-XB400_%281%29.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Sony_S_Wireless_Headphones_%2847103208%29.jpeg/960px-Sony_S_Wireless_Headphones_%2847103208%29.jpeg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/2023_S%C5%82uchawki_Sony_WI-XB400_%283%29.jpg/960px-2023_S%C5%82uchawki_Sony_WI-XB400_%283%29.jpg',
+    ] },
+  { nombre: 'Cargador USB-C 30 W', categoria: 'Tecnología', precio: 16.5, stock: 40, descripcion: 'Carga rápida para celular y tableta. Compacto, con protección contra sobrecalentamiento.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Silicon_vs_GaN_30W_USB-C_chargers.jpg/960px-Silicon_vs_GaN_30W_USB-C_chargers.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Baseus_CCCP20UE_20W_USB_charger-0.jpg/960px-Baseus_CCCP20UE_20W_USB_charger-0.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/MagSafe_and_USB-C_Cable_Charger_for_iPhone.jpg/960px-MagSafe_and_USB-C_Cable_Charger_for_iPhone.jpg',
+    ] },
+  { nombre: 'Parlante Bluetooth Portátil', categoria: 'Tecnología', precio: 34, stock: 3, descripcion: 'Resistente al agua, 12 horas de batería y micrófono integrado. Quedan pocas unidades.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/JBL_Pulse_5_Portable_Bluetooth_Speaker.jpg/960px-JBL_Pulse_5_Portable_Bluetooth_Speaker.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/UE_Boom_2.jpg/960px-UE_Boom_2.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/QFX_R-40_Portable_Bluetooth_Speaker.jpg/960px-QFX_R-40_Portable_Bluetooth_Speaker.jpg',
+    ] },
+  { nombre: 'Bandas Elásticas de Resistencia x3', categoria: 'Deportes', precio: 12.9, stock: 30, descripcion: 'Tres niveles de tensión para entrenar en casa. Incluye bolsa de transporte.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Woman_exercising_with_resistance_band_in_a_gym_setting.jpg/960px-Woman_exercising_with_resistance_band_in_a_gym_setting.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Strength_band.png/960px-Strength_band.png',
+      'https://upload.wikimedia.org/wikipedia/commons/7/72/Back-flyes-with-resistance-bands-1.png',
+    ] },
+  { nombre: 'Colchoneta de Yoga Antideslizante', categoria: 'Deportes', precio: 22, stock: 17, descripcion: 'Espesor de 6 mm, superficie texturizada y correa para cargarla.', fotos: [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Yoga_mat.jpg/960px-Yoga_mat.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Yoga_mats.png/960px-Yoga_mats.png',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Cotton_Yoga_Mats.png/960px-Cotton_Yoga_Mats.png',
+    ] },
   { nombre: 'Serum Edición Limitada Vitamina C', categoria: 'Serum', precio: 62, stock: 0, activo: false, descripcion: 'Edición de temporada agotada. Retirado del catálogo hasta la próxima producción.' },
 ];
 
@@ -147,8 +191,8 @@ async function main() {
         precio: p.precio,
         categoria: p.categoria,
         stock: p.stock,
-        img: `https://picsum.photos/seed/${semilla}/600`,
-        galeria: [1, 2, 3].map((n) => `https://picsum.photos/seed/${semilla}${n}/600`),
+        img: p.fotos?.[0] ?? `https://picsum.photos/seed/${semilla}/600`,
+        galeria: p.fotos?.slice(1) ?? [1, 2, 3].map((n) => `https://picsum.photos/seed/${semilla}${n}/600`),
       },
     });
     if (p.activo === false) {
