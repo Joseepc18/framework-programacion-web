@@ -5,6 +5,7 @@
 // Uso:   node scripts/demo-data.mjs
 // Env:   API_URL (por defecto http://localhost:3001)
 //        ADMIN_EMAIL / ADMIN_PASSWORD (por defecto la cuenta semilla)
+//        SOLO_CATALOGO=1 carga únicamente los productos y termina
 //
 // Cada cuenta recibe su propia contraseña aleatoria, que se guarda en
 // scripts/cuentas-demo.local (ignorado por git) para poder volver a ejecutarlo.
@@ -41,12 +42,24 @@ const CUENTAS = [
   { clave: 'rosa', nombre: 'Rosa Mero', email: 'rosamero.ventas@gmail.com', ref: 'valentina', ciudad: 'La Libertad', direccion: 'Av. 9 de Octubre y calle 14', telefono: '0958839102', desactivar: true },
 ];
 
-// Productos nuevos que amplían el catálogo semilla (solo categorías que el filtro ya conoce).
+// Productos nuevos que amplían el catálogo semilla. Las categorías del filtro salen de los
+// productos reales, así que basta con crearlos para que aparezcan.
 const PRODUCTOS_NUEVOS = [
   { nombre: 'Agua Micelar Calmante', categoria: 'Tónico', precio: 19.5, stock: 40, descripcion: 'Limpia y desmaquilla sin enjuague. Con pepino y aloe, apta para piel sensible.' },
   { nombre: 'Mascarilla de Arcilla Verde', categoria: 'Mascarilla', precio: 24, stock: 28, descripcion: 'Arcilla purificante para piel mixta o grasa. Controla el brillo y afina los poros.' },
   { nombre: 'Crema Corporal de Cacao', categoria: 'Crema', precio: 21.9, stock: 6, descripcion: 'Manteca de cacao y vitamina E para piel seca. Absorción rápida, aroma suave.' },
   { nombre: 'Set de Viaje Hidratación', categoria: 'Kit', precio: 39, stock: 15, descripcion: 'Cuatro formatos de 30 ml para llevar la rutina básica en el equipaje de mano.' },
+  { nombre: 'Mochila Escolar Reforzada', categoria: 'Utiles Escolares', precio: 32.5, stock: 18, descripcion: 'Tres compartimentos, espalda acolchada y base impermeable. Cabe un portátil de 14 pulgadas.' },
+  { nombre: 'Set de Marcadores Pastel x12', categoria: 'Utiles Escolares', precio: 8.9, stock: 60, descripcion: 'Doce tonos suaves de punta doble, fina y gruesa. Tinta a base de agua, sin olor.' },
+  { nombre: 'Calculadora Científica 240 Funciones', categoria: 'Utiles Escolares', precio: 24.5, stock: 14, descripcion: 'Pantalla de dos líneas con fracciones, estadística y ecuaciones. Permitida en exámenes.' },
+  { nombre: 'Lámpara de Escritorio LED', categoria: 'Hogar', precio: 27.9, stock: 22, descripcion: 'Brazo flexible, tres temperaturas de luz y regulación táctil. Carga USB incluida.' },
+  { nombre: 'Juego de Sábanas de Algodón', categoria: 'Hogar', precio: 45, stock: 10, descripcion: 'Cama de dos plazas, algodón peinado de 200 hilos. Incluye funda de almohada.' },
+  { nombre: 'Termo de Acero Inoxidable 750 ml', categoria: 'Hogar', precio: 18.5, stock: 35, descripcion: 'Mantiene el frío 24 horas y el calor 12. Tapa hermética y asa de transporte.' },
+  { nombre: 'Audífonos Inalámbricos', categoria: 'Tecnología', precio: 39.9, stock: 25, descripcion: 'Bluetooth 5.3, cancelación básica de ruido y hasta 30 horas con el estuche.' },
+  { nombre: 'Cargador USB-C 30 W', categoria: 'Tecnología', precio: 16.5, stock: 40, descripcion: 'Carga rápida para celular y tableta. Compacto, con protección contra sobrecalentamiento.' },
+  { nombre: 'Parlante Bluetooth Portátil', categoria: 'Tecnología', precio: 34, stock: 3, descripcion: 'Resistente al agua, 12 horas de batería y micrófono integrado. Quedan pocas unidades.' },
+  { nombre: 'Bandas Elásticas de Resistencia x3', categoria: 'Deportes', precio: 12.9, stock: 30, descripcion: 'Tres niveles de tensión para entrenar en casa. Incluye bolsa de transporte.' },
+  { nombre: 'Colchoneta de Yoga Antideslizante', categoria: 'Deportes', precio: 22, stock: 17, descripcion: 'Espesor de 6 mm, superficie texturizada y correa para cargarla.' },
   { nombre: 'Serum Edición Limitada Vitamina C', categoria: 'Serum', precio: 62, stock: 0, activo: false, descripcion: 'Edición de temporada agotada. Retirado del catálogo hasta la próxima producción.' },
 ];
 
@@ -142,6 +155,10 @@ async function main() {
       await llamar('DELETE', `/api/productos/${creado.id}`, { token: admin });
     }
     console.log(`producto ${p.nombre}${p.activo === false ? ' (retirado)' : ''}`);
+  }
+  if (process.env.SOLO_CATALOGO) {
+    console.log('catálogo listo');
+    return;
   }
   const { datos: publico } = await llamar('GET', '/api/productos');
   const idDe = Object.fromEntries((publico.data ?? publico).map((p) => [p.nombre, p.id]));
