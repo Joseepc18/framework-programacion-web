@@ -280,6 +280,21 @@ func (pg *PostgresRepository) CambiarEstadoPedido(ctx context.Context, id int, n
 			return models.Pedido{}, err
 		}
 
+		// El contador de cada nodo debe seguir igual al ledger vigente: restamos
+		// lo que se va a revertir ANTES de marcar las filas como revertidas.
+		if _, err := tx.Exec(ctx,
+			`UPDATE referidos r
+			 SET comisiones = GREATEST(r.comisiones - c.monto, 0)
+			 FROM (SELECT referido_id, SUM(monto) AS monto
+			       FROM comisiones
+			       WHERE pedido_id = $1 AND estado IN ('pendiente', 'aprobada')
+			       GROUP BY referido_id) c
+			 WHERE r.id = c.referido_id`,
+			id,
+		); err != nil {
+			return models.Pedido{}, err
+		}
+
 		if _, err := tx.Exec(ctx,
 			`UPDATE comisiones SET estado = 'revertida'
 			 WHERE pedido_id = $1 AND estado IN ('pendiente', 'aprobada')`,
