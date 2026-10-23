@@ -2,6 +2,7 @@
 // Administración del catálogo (Fase 2): tabla con búsqueda server-side (?q=),
 // alta/edición en formulario y borrado lógico con confirmación.
 import { useEffect, useState, type FormEvent } from "react";
+import ImagenProducto from "./ImagenProducto";
 import type { Producto } from "../data/productos";
 import {
   getProductosAdmin,
@@ -22,6 +23,42 @@ const PRODUCTO_VACIO = {
 };
 
 type FormProducto = typeof PRODUCTO_VACIO;
+
+// Comprueba si la URL realmente carga como imagen y muestra una vista previa o un aviso.
+// Es solo informativo: no impide guardar.
+const VistaPreviaImagen = ({ url }: { url: string }) => {
+  const [resultado, setResultado] = useState<{ url: string; ok: boolean } | null>(null);
+  const direccion = url.trim();
+
+  useEffect(() => {
+    if (!direccion) return;
+    const sonda = new Image();
+    sonda.onload = () => setResultado({ url: direccion, ok: true });
+    sonda.onerror = () => setResultado({ url: direccion, ok: false });
+    const timer = setTimeout(() => {
+      sonda.src = direccion;
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      sonda.onload = null;
+      sonda.onerror = null;
+    };
+  }, [direccion]);
+
+  if (!direccion) return null;
+  if (resultado?.url !== direccion) {
+    return <p className="mt-2 text-xs text-slate-500">Comprobando imagen...</p>;
+  }
+  if (!resultado.ok) {
+    return (
+      <p className="mt-2 border border-coral-200 border-l-4 border-l-coral-500 bg-coral-50 p-2 text-xs text-coral-700">
+        Esta dirección no se puede mostrar como imagen. Usa el enlace directo al archivo (suele
+        terminar en .jpg, .png o .webp), no la página donde se ve la foto.
+      </p>
+    );
+  }
+  return <img src={direccion} alt="Vista previa" className="mt-2 h-28 w-28 border border-linea object-cover" />;
+};
 
 const AdminProductos = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -134,14 +171,14 @@ const AdminProductos = () => {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Administración de Productos</h1>
+          <h1 className="text-3xl uppercase text-marino-700">Administración de Productos</h1>
           <p className="text-slate-500 mt-1">
             Alta, edición y borrado lógico del catálogo.
           </p>
         </div>
         <button
           onClick={abrirAlta}
-          className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+          className="bg-marino-700 text-arena-200 font-semibold px-4 py-2 hover:bg-marino-800 transition"
         >
           + Nuevo producto
         </button>
@@ -157,18 +194,18 @@ const AdminProductos = () => {
             setPagina(1);
           }}
           placeholder="Buscar por nombre, categoría o descripción..."
-          className="w-full sm:w-96 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none"
+          className="w-full sm:w-96 px-4 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none"
         />
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+        <div className="bg-coral-50 text-coral-700 p-3 text-sm mb-4 border border-coral-200 border-l-4 border-l-coral-500">
           {error}
         </div>
       )}
 
       {/* Tarjetas en móvil, tabla en escritorio */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-papel border border-linea overflow-hidden">
         {cargando ? (
           <p className="p-6 text-slate-500">Cargando catálogo...</p>
         ) : productos.length === 0 ? (
@@ -177,7 +214,7 @@ const AdminProductos = () => {
           <>
             {/* Tabla (escritorio) */}
             <table className="hidden md:table w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+              <thead className="bg-arena-100 text-marino-700 uppercase tracking-widest text-xs border-b border-marino-700">
                 <tr>
                   <th className="text-left p-3">Producto</th>
                   <th className="text-left p-3">Categoría</th>
@@ -187,12 +224,12 @@ const AdminProductos = () => {
                   <th className="text-right p-3">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-linea">
                 {productos.map((p) => (
-                  <tr key={p.id} className={p.activo === false ? "bg-slate-50 opacity-70" : ""}>
+                  <tr key={p.id} className={p.activo === false ? "bg-slate-100 opacity-70" : "hover:bg-arena-50"}>
                     <td className="p-3">
                       <div className="flex items-center gap-3">
-                        <img src={p.img} alt={p.nombre} className="w-10 h-10 rounded object-cover" />
+                        <ImagenProducto src={p.img} alt={p.nombre} className="w-10 h-10 object-cover" />
                         <span className="font-medium text-slate-800">{p.nombre}</span>
                       </div>
                     </td>
@@ -201,10 +238,10 @@ const AdminProductos = () => {
                     <td className="p-3 text-right">{p.stock ?? 0}</td>
                     <td className="p-3 text-center">
                       <span
-                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 ${
                           p.activo === false
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-coral-100 text-coral-700"
+                            : "bg-turquesa-100 text-turquesa-800"
                         }`}
                       >
                         {p.activo === false ? "Inactivo" : "Activo"}
@@ -219,7 +256,7 @@ const AdminProductos = () => {
                       </button>
                       <button
                         onClick={() => alternarEstado(p)}
-                        className={p.activo === false ? "text-green-600 hover:underline font-medium" : "text-red-600 hover:underline font-medium"}
+                        className={p.activo === false ? "text-turquesa-700 hover:underline font-medium" : "text-coral-600 hover:underline font-medium"}
                       >
                         {p.activo === false ? "Activar" : "Desactivar"}
                       </button>
@@ -230,21 +267,21 @@ const AdminProductos = () => {
             </table>
 
             {/* Tarjetas (móvil) */}
-            <ul className="md:hidden divide-y divide-slate-100">
+            <ul className="md:hidden divide-y divide-linea">
               {productos.map((p) => (
                 <li key={p.id} className="p-4">
                   <div className="flex items-center gap-3">
-                    <img src={p.img} alt={p.nombre} className="w-12 h-12 rounded object-cover" />
+                    <ImagenProducto src={p.img} alt={p.nombre} className="w-12 h-12 object-cover" />
                     <div className="flex-1">
                       <p className="font-semibold text-slate-800">{p.nombre}</p>
                       <p className="text-sm text-slate-500">
                         {p.categoria} · ${p.precio.toFixed(2)} · Stock: {p.stock ?? 0}
                       </p>
                       <span
-                        className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        className={`inline-block mt-1 text-xs font-semibold uppercase tracking-wider px-2 py-0.5 ${
                           p.activo === false
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-coral-100 text-coral-700"
+                            : "bg-turquesa-100 text-turquesa-800"
                         }`}
                       >
                         {p.activo === false ? "Inactivo" : "Activo"}
@@ -260,7 +297,7 @@ const AdminProductos = () => {
                     </button>
                     <button
                       onClick={() => alternarEstado(p)}
-                      className={p.activo === false ? "text-green-600 hover:underline font-medium text-sm" : "text-red-600 hover:underline font-medium text-sm"}
+                      className={p.activo === false ? "text-turquesa-700 hover:underline font-medium text-sm" : "text-coral-600 hover:underline font-medium text-sm"}
                     >
                       {p.activo === false ? "Activar" : "Desactivar"}
                     </button>
@@ -278,7 +315,7 @@ const AdminProductos = () => {
           <button
             onClick={() => setPagina((p) => Math.max(1, p - 1))}
             disabled={pagina === 1}
-            className="px-3 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-3 py-2 min-h-11 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Anterior
           </button>
@@ -288,7 +325,7 @@ const AdminProductos = () => {
           <button
             onClick={() => setPagina((p) => Math.min(paginas, p + 1))}
             disabled={pagina === paginas}
-            className="px-3 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-3 py-2 min-h-11 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Siguiente
           </button>
@@ -298,13 +335,13 @@ const AdminProductos = () => {
       {/* ===== FORMULARIO (modal) ===== */}
       {form && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-papel w-full sm:max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-slate-800 mb-4">
               {form.id === undefined ? "Nuevo producto" : `Editar producto #${form.id}`}
             </h2>
 
             {errorForm && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+              <div className="bg-coral-50 text-coral-700 p-3 text-sm mb-4 border border-coral-200 border-l-4 border-l-coral-500">
                 {errorForm}
               </div>
             )}
@@ -316,7 +353,7 @@ const AdminProductos = () => {
                   type="text"
                   value={form.nombre}
                   onChange={(e) => cambiarCampo("nombre", e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
                   required
                 />
               </div>
@@ -327,7 +364,7 @@ const AdminProductos = () => {
                   value={form.descripcion}
                   onChange={(e) => cambiarCampo("descripcion", e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
                 />
               </div>
 
@@ -340,7 +377,7 @@ const AdminProductos = () => {
                     min="0.01"
                     value={form.precio}
                     onChange={(e) => cambiarCampo("precio", Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
                     required
                   />
                 </div>
@@ -351,7 +388,7 @@ const AdminProductos = () => {
                     min="0"
                     value={form.stock}
                     onChange={(e) => cambiarCampo("stock", Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
                     required
                   />
                 </div>
@@ -363,8 +400,8 @@ const AdminProductos = () => {
                   type="text"
                   value={form.categoria}
                   onChange={(e) => cambiarCampo("categoria", e.target.value)}
-                  placeholder="Serum, Crema, Tónico..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  placeholder="Ej.: Hogar, Tecnología, Útiles Escolares"
+                  className="w-full px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
                   required
                 />
               </div>
@@ -376,23 +413,24 @@ const AdminProductos = () => {
                   value={form.img}
                   onChange={(e) => cambiarCampo("img", e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none"
                   required
                 />
+                <VistaPreviaImagen url={form.img} />
               </div>
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="flex-1 bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                  className="flex-1 bg-marino-700 text-arena-200 font-semibold py-2 hover:bg-marino-800 transition disabled:opacity-50"
                 >
                   {guardando ? "Guardando..." : "Guardar"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setForm(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                  className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
                 >
                   Cancelar
                 </button>

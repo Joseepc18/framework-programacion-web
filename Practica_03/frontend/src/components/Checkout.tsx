@@ -9,6 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { procesarCheckout, type PedidoRequest } from '../services/checkoutService';
 
+import Tarjeta from "./Tarjeta";
 interface DatosEnvio {
   nombre: string;
   email: string;
@@ -39,7 +40,7 @@ const Checkout = () => {
   // Si el carrito está vacío, mostramos un aviso en lugar del formulario
   if (cart.length === 0) {
     return (
-      <div className="bg-white p-10 rounded-lg border border-slate-200 text-center">
+      <div className="bg-papel p-10 border border-linea text-center">
         <p className="text-slate-600 text-lg mb-4">No tienes productos en el carrito.</p>
         <Link to="/catalogo" className="text-indigo-600 font-semibold hover:underline">
           ← Ir al catálogo
@@ -93,17 +94,16 @@ const Checkout = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Finalizar Compra</h1>
+      <h1 className="text-3xl uppercase text-marino-700 mb-6">Finalizar Compra</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ===== FORMULARIO DE ENVÍO ===== */}
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-5">
-          <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Datos de Envío</h2>
+          <Tarjeta titulo="Datos de Envío">
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-600 mb-1">
                   Nombre completo *
                 </label>
                 <input
@@ -111,11 +111,11 @@ const Checkout = () => {
                   required
                   value={datos.nombre}
                   onChange={(e) => handleChange("nombre", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className="w-full px-4 py-2.5 border border-linea bg-papel focus:ring-2 focus:ring-marino-700 focus:border-marino-700 outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-600 mb-1">
                   Correo electrónico *
                 </label>
                 <input
@@ -123,11 +123,11 @@ const Checkout = () => {
                   required
                   value={datos.email}
                   onChange={(e) => handleChange("email", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className="w-full px-4 py-2.5 border border-linea bg-papel focus:ring-2 focus:ring-marino-700 focus:border-marino-700 outline-none transition"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-600 mb-1">
                   Dirección *
                 </label>
                 <input
@@ -135,11 +135,11 @@ const Checkout = () => {
                   required
                   value={datos.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className="w-full px-4 py-2.5 border border-linea bg-papel focus:ring-2 focus:ring-marino-700 focus:border-marino-700 outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-600 mb-1">
                   Ciudad *
                 </label>
                 <input
@@ -147,11 +147,11 @@ const Checkout = () => {
                   required
                   value={datos.ciudad}
                   onChange={(e) => handleChange("ciudad", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className="w-full px-4 py-2.5 border border-linea bg-papel focus:ring-2 focus:ring-marino-700 focus:border-marino-700 outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-600 mb-1">
                   Teléfono *
                 </label>
                 <input
@@ -159,19 +159,18 @@ const Checkout = () => {
                   required
                   value={datos.telefono}
                   onChange={(e) => handleChange("telefono", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className="w-full px-4 py-2.5 border border-linea bg-papel focus:ring-2 focus:ring-marino-700 focus:border-marino-700 outline-none transition"
                 />
               </div>
             </div>
-          </div>
+          </Tarjeta>
 
-          <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Método de Pago</h2>
+          <Tarjeta titulo="Método de Pago">
             <div className="space-y-3">
               {METODOS_PAGO.map((metodo) => (
                 <label
                   key={metodo}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-300 transition"
+                  className="flex items-center gap-3 p-3 border border-linea cursor-pointer hover:border-marino-700 has-[:checked]:border-marino-700 has-[:checked]:bg-arena-100 transition"
                 >
                   <input
                     type="radio"
@@ -179,17 +178,17 @@ const Checkout = () => {
                     value={metodo}
                     checked={datos.metodoPago === metodo}
                     onChange={(e) => handleChange("metodoPago", e.target.value)}
-                    className="accent-indigo-600"
+                    className="accent-marino-700"
                   />
                   <span className="text-sm text-slate-700">{metodo}</span>
                 </label>
               ))}
             </div>
-          </div>
+          </Tarjeta>
 
           {/* Alerta de error: la compra no avanzó y el pedido no se registró */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-coral-50 border border-coral-200 border-l-4 border-l-coral-500 text-coral-700 px-4 py-3 text-sm">
               <p className="font-semibold">No se pudo completar el pedido</p>
               <p>{error}</p>
             </div>
@@ -198,34 +197,33 @@ const Checkout = () => {
           <button
             type="submit"
             disabled={procesando}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-coral-500 text-marino-900 py-3 font-semibold uppercase tracking-wider hover:bg-coral-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {procesando ? "Procesando pago..." : "Confirmar Pedido"}
           </button>
         </form>
 
         {/* ===== RESUMEN DEL PEDIDO ===== */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm h-fit">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Resumen del Pedido</h2>
-          <div className="space-y-3 border-b border-slate-100 pb-4 mb-4">
+        <Tarjeta titulo="Resumen del Pedido" className="h-fit">
+          <div className="space-y-3 border-b border-linea pb-4 mb-4">
             {cart.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
+              <div key={item.id} className="flex justify-between gap-4 text-sm">
                 <span className="text-slate-600">
                   {item.nombre} × {item.cantidad}
                 </span>
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-tinta tabular-nums">
                   ${(item.precio * item.cantidad).toFixed(2)}
                 </span>
               </div>
             ))}
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-slate-800 font-bold">Total</span>
-            <span className="text-2xl font-bold text-indigo-600">
+          <div className="flex justify-between items-baseline">
+            <span className="text-xs font-semibold uppercase tracking-widest text-slate-600">Total</span>
+            <span className="font-display text-4xl text-marino-700 tabular-nums">
               ${totalPrice.toFixed(2)}
             </span>
           </div>
-        </div>
+        </Tarjeta>
       </div>
     </div>
   );

@@ -27,8 +27,8 @@ export default function InstalarApp({ ubicacion }: { ubicacion: 'login' | 'navba
           disabled={instalando}
           aria-label="Instalar app"
           aria-haspopup={instruccionesIOS ? 'dialog' : undefined}
-          title="Instala MultiCatálogo para acceder desde tu pantalla de inicio"
-          className={`min-h-11 min-w-11 inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-200 text-indigo-700 font-semibold hover:bg-indigo-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 ${esNavbar ? 'px-3 text-sm' : 'mt-4 w-full px-4 py-3'}`}
+          title="Instala JP Mercantil para acceder desde tu pantalla de inicio"
+          className={`min-h-11 min-w-11 inline-flex items-center justify-center gap-2 border border-indigo-200 text-indigo-700 font-semibold hover:bg-indigo-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 ${esNavbar ? 'px-3 text-sm' : 'mt-4 w-full px-4 py-3'}`}
         >
           <Download size={18} aria-hidden="true" />
           <span className={esNavbar ? 'hidden sm:inline' : ''}>
@@ -45,15 +45,15 @@ export default function InstalarApp({ ubicacion }: { ubicacion: 'login' | 'navba
         <dialog
           ref={dialogo}
           aria-labelledby={tituloId}
-          className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-slate-700 shadow-xl backdrop:bg-slate-900/40"
+          className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm border border-linea bg-papel p-6 text-slate-700 shadow-xl backdrop:bg-slate-900/40"
         >
           <div className="flex items-start justify-between gap-2">
-            <h2 id={tituloId} className="pt-2 text-lg font-bold text-slate-900">Instalar MultiCatálogo</h2>
+            <h2 id={tituloId} className="pt-2 text-lg font-bold text-slate-900">Instalar JP Mercantil</h2>
             <button
               type="button"
               aria-label="Cerrar instrucciones de instalación"
               onClick={() => dialogo.current?.close()}
-              className="min-h-11 min-w-11 flex items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="min-h-11 min-w-11 flex items-center justify-center hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               <X size={20} aria-hidden="true" />
             </button>

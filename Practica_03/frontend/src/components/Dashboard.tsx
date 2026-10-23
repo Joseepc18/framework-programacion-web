@@ -13,6 +13,8 @@ import {
   type TopReferido,
 } from "../services/reportesService";
 import type { Deuda } from "../services/liquidacionesService";
+import Kpi from "./Kpi";
+import Tarjeta from "./Tarjeta";
 
 const dinero = (valor: number): string =>
   `$${valor.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -60,11 +62,11 @@ const Dashboard = () => {
 
   const deudaTotal = deudas.reduce((suma, d) => suma + d.pendiente, 0);
 
-  const kpis = [
-    { etiqueta: "Total Vendido", valor: dinero(resumen?.total_vendido ?? 0), color: "text-indigo-600" },
-    { etiqueta: "Pedidos", valor: String(resumen?.num_pedidos ?? 0), color: "text-indigo-600" },
-    { etiqueta: "Ticket Promedio", valor: dinero(resumen?.ticket_promedio ?? 0), color: "text-amber-600" },
-    { etiqueta: "Comisiones Devengadas", valor: dinero(resumen?.comisiones_devengadas ?? 0), color: "text-green-600" },
+  const kpis: { etiqueta: string; valor: string; tono: "marino" | "turquesa" | "coral" | "arena" }[] = [
+    { etiqueta: "Total Vendido", valor: dinero(resumen?.total_vendido ?? 0), tono: "marino" },
+    { etiqueta: "Pedidos", valor: String(resumen?.num_pedidos ?? 0), tono: "turquesa" },
+    { etiqueta: "Ticket Promedio", valor: dinero(resumen?.ticket_promedio ?? 0), tono: "arena" },
+    { etiqueta: "Comisiones Devengadas", valor: dinero(resumen?.comisiones_devengadas ?? 0), tono: "coral" },
   ];
 
   const cambiarPeriodo = () => {
@@ -74,7 +76,7 @@ const Dashboard = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Resumen General</h1>
+        <h1 className="text-3xl uppercase text-marino-700">Resumen General</h1>
         <div className="flex flex-wrap items-end gap-3 text-sm">
           <label className="flex flex-col text-slate-500">
             Desde
@@ -86,7 +88,7 @@ const Dashboard = () => {
                 cambiarPeriodo();
                 setDesde(e.target.value);
               }}
-              className="border border-slate-300 rounded-lg px-3 py-2 min-h-11 text-slate-800"
+              className="border border-linea bg-papel px-3 py-2 min-h-11 text-tinta"
             />
           </label>
           <label className="flex flex-col text-slate-500">
@@ -99,7 +101,7 @@ const Dashboard = () => {
                 cambiarPeriodo();
                 setHasta(e.target.value);
               }}
-              className="border border-slate-300 rounded-lg px-3 py-2 min-h-11 text-slate-800"
+              className="border border-linea bg-papel px-3 py-2 min-h-11 text-tinta"
             />
           </label>
           {(desde || hasta) && (
@@ -109,7 +111,7 @@ const Dashboard = () => {
                 setDesde("");
                 setHasta("");
               }}
-              className="px-3 py-2 min-h-11 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+              className="px-3 py-2 min-h-11 border border-marino-700 text-marino-700 hover:bg-marino-700 hover:text-arena-200"
             >
               Todo el historial
             </button>
@@ -118,117 +120,107 @@ const Dashboard = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+        <div className="bg-coral-50 text-coral-700 p-3 text-sm mb-4 border border-coral-200 border-l-4 border-l-coral-500">
           {error}
         </div>
       )}
 
       {/* ===== KPIs DEL NEGOCIO ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         {kpis.map((kpi) => (
-          <div key={kpi.etiqueta} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-            <p className="text-sm text-slate-500 uppercase font-semibold">{kpi.etiqueta}</p>
-            <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>
-              {cargando ? "…" : kpi.valor}
-            </p>
-          </div>
+          <Kpi key={kpi.etiqueta} etiqueta={kpi.etiqueta} valor={cargando ? "…" : kpi.valor} tono={kpi.tono} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* ===== TOP PRODUCTOS ===== */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Productos</h2>
+        <Tarjeta titulo="Top Productos" sinRelleno>
           {cargando ? (
-            <p className="text-slate-500">Cargando...</p>
+            <p className="p-5 text-slate-500">Cargando...</p>
           ) : productos.length === 0 ? (
-            <p className="text-slate-500">Sin ventas en el periodo seleccionado.</p>
+            <p className="p-5 text-slate-500">Sin ventas en el periodo seleccionado.</p>
           ) : (
-            <div className="space-y-3">
+            <ol className="divide-y divide-linea">
               {productos.map((p, idx) => (
-                <div
-                  key={p.producto_id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-8 h-8 shrink-0 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
+                <li key={p.producto_id} className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-arena-50">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <span className="w-8 shrink-0 font-display text-3xl leading-none text-coral-500">
                       {idx + 1}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-800 truncate">{p.nombre}</p>
+                      <p className="font-semibold text-tinta truncate">{p.nombre}</p>
                       <p className="text-xs text-slate-500">{p.unidades} unidades</p>
                     </div>
                   </div>
-                  <p className="font-bold text-slate-800">{dinero(p.ingresos)}</p>
-                </div>
+                  <p className="font-semibold text-marino-700 tabular-nums">{dinero(p.ingresos)}</p>
+                </li>
               ))}
-            </div>
+            </ol>
           )}
-        </div>
+        </Tarjeta>
 
         {/* ===== TOP REFERIDOS ===== */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Distribuidores</h2>
+        <Tarjeta titulo="Top Distribuidores" sinRelleno>
           {cargando ? (
-            <p className="text-slate-500">Cargando...</p>
+            <p className="p-5 text-slate-500">Cargando...</p>
           ) : referidos.length === 0 ? (
-            <p className="text-slate-500">Sin ventas de red en el periodo seleccionado.</p>
+            <p className="p-5 text-slate-500">Sin ventas de red en el periodo seleccionado.</p>
           ) : (
-            <div className="space-y-3">
+            <ol className="divide-y divide-linea">
               {referidos.map((r, idx) => (
-                <div
-                  key={r.referido_id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-8 h-8 shrink-0 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
+                <li key={r.referido_id} className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-arena-50">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <span className="w-8 shrink-0 font-display text-3xl leading-none text-coral-500">
                       {idx + 1}
                     </span>
-                    <p className="font-semibold text-slate-800 truncate">{r.nombre}</p>
+                    <p className="font-semibold text-tinta truncate">{r.nombre}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-slate-800">{dinero(r.ventas_red)}</p>
-                    <p className="text-xs text-indigo-600 font-semibold">+{dinero(r.comisiones)}</p>
+                  <div className="text-right tabular-nums">
+                    <p className="font-semibold text-marino-700">{dinero(r.ventas_red)}</p>
+                    <p className="text-xs font-semibold text-turquesa-700">+{dinero(r.comisiones)}</p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
           )}
-        </div>
+        </Tarjeta>
 
         {/* ===== COMISIONES PENDIENTES ===== */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Comisiones Pendientes</h2>
-            <p className="text-amber-600 font-bold">{dinero(deudaTotal)}</p>
-          </div>
+        <Tarjeta
+          titulo="Comisiones Pendientes"
+          derecha={dinero(deudaTotal)}
+          sinRelleno
+          className="lg:col-span-2"
+        >
           {cargando ? (
-            <p className="text-slate-500">Cargando...</p>
+            <p className="p-5 text-slate-500">Cargando...</p>
           ) : deudas.length === 0 ? (
-            <p className="text-slate-500">No hay comisiones pendientes de pago.</p>
+            <p className="p-5 text-slate-500">No hay comisiones pendientes de pago.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                <thead className="border-b border-marino-700 bg-arena-100 text-xs uppercase tracking-widest text-marino-700">
                   <tr>
-                    <th className="text-left p-3">Distribuidor</th>
-                    <th className="text-center p-3">Comisiones</th>
-                    <th className="text-right p-3">Pendiente</th>
+                    <th className="text-left px-5 py-3">Distribuidor</th>
+                    <th className="text-center px-5 py-3">Comisiones</th>
+                    <th className="text-right px-5 py-3">Pendiente</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-linea">
                   {deudas.map((d) => (
-                    <tr key={d.referido_id}>
-                      <td className="p-3 font-medium text-slate-800">{d.nombre}</td>
-                      <td className="p-3 text-center">{d.cantidad}</td>
-                      <td className="p-3 text-right font-semibold text-amber-700">{dinero(d.pendiente)}</td>
+                    <tr key={d.referido_id} className="hover:bg-arena-50">
+                      <td className="px-5 py-3 font-medium text-tinta">{d.nombre}</td>
+                      <td className="px-5 py-3 text-center tabular-nums">{d.cantidad}</td>
+                      <td className="px-5 py-3 text-right font-semibold tabular-nums text-coral-600">
+                        {dinero(d.pendiente)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
+        </Tarjeta>
       </div>
     </div>
   );

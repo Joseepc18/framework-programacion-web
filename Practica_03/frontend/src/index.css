@@ -1,4 +1,118 @@
 @import "tailwindcss";
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow-condensed/500.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+
+/* Identidad de JP Mercantil, dirección "Puerto": azul marino, turquesa, arena y coral.
+   Las escalas indigo y slate de Tailwind se redefinen sobre esta paleta para que
+   ninguna pantalla conserve el aspecto anterior mientras se rediseña una por una. */
+@theme {
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+
+  --color-fondo: #f7f0e1;
+  --color-papel: #fffdf8;
+  --color-linea: #e0d5bf;
+  --color-tinta: #10222f;
+  --color-piedra: #6f7378;
+
+  --color-marino-50: #eaf0f6;
+  --color-marino-100: #cfdcea;
+  --color-marino-200: #a3bbd4;
+  --color-marino-300: #6f90b3;
+  --color-marino-400: #3f6891;
+  --color-marino-500: #1f4a74;
+  --color-marino-600: #163a5e;
+  --color-marino-700: #0e2a47;
+  --color-marino-800: #0a2038;
+  --color-marino-900: #071626;
+  --color-marino-950: #040d17;
+
+  --color-turquesa-50: #e6f4f5;
+  --color-turquesa-100: #c4e5e7;
+  --color-turquesa-200: #8ccdd1;
+  --color-turquesa-300: #55b2b8;
+  --color-turquesa-400: #2f9ea5;
+  --color-turquesa-500: #1e8c93;
+  --color-turquesa-600: #187178;
+  --color-turquesa-700: #14595f;
+  --color-turquesa-800: #0f4247;
+  --color-turquesa-900: #0a2c30;
+
+  --color-arena-50: #fbf6ec;
+  --color-arena-100: #f7f0e1;
+  --color-arena-200: #f2e3c8;
+  --color-arena-300: #e6d0a8;
+  --color-arena-400: #d6b985;
+  --color-arena-500: #bd9a5e;
+
+  --color-coral-50: #fff0ec;
+  --color-coral-100: #ffd9cf;
+  --color-coral-200: #ffb8a6;
+  --color-coral-300: #ff9078;
+  --color-coral-400: #ff7a5a;
+  --color-coral-500: #ff6b4a;
+  --color-coral-600: #c23f22;
+  --color-coral-700: #9a3119;
+  --color-coral-800: #742412;
+  --color-coral-900: #4d170b;
+
+  --color-indigo-50: var(--color-marino-50);
+  --color-indigo-100: var(--color-marino-100);
+  --color-indigo-200: var(--color-marino-200);
+  --color-indigo-300: var(--color-marino-300);
+  --color-indigo-400: var(--color-marino-400);
+  --color-indigo-500: var(--color-marino-500);
+  --color-indigo-600: var(--color-marino-600);
+  --color-indigo-700: var(--color-marino-700);
+  --color-indigo-800: var(--color-marino-800);
+  --color-indigo-900: var(--color-marino-900);
+  --color-indigo-950: var(--color-marino-950);
+
+  --color-slate-50: #f8f3e8;
+  --color-slate-100: #efe8d9;
+  --color-slate-200: #e0d5bf;
+  --color-slate-300: #c8bba2;
+  --color-slate-400: #9a9080;
+  --color-slate-500: #6f7378;
+  --color-slate-600: #4f5d6b;
+  --color-slate-700: #35455a;
+  --color-slate-800: #1f3248;
+  --color-slate-900: #10222f;
+  --color-slate-950: #08141d;
+
+  /* Todo rectangular y sin sombras difusas: la separación la dan líneas y bloques de color. */
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+
+  --shadow-sm: 0 1px 0 rgb(14 42 71 / 0.08);
+  --shadow-md: 0 0 0 1px rgb(14 42 71 / 0.14);
+  --shadow-lg: 0 0 0 1px rgb(14 42 71 / 0.18);
+  --shadow-xl: 0 0 0 1px rgb(14 42 71 / 0.22);
+  --shadow-2xl: 0 0 0 1px rgb(14 42 71 / 0.26);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-fondo);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.05;
+  }
+}
 
 /* Respeta el notch y las barras del sistema cuando la PWA está instalada */
 body {
