@@ -97,7 +97,7 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
   return (
     <aside
       className={`
-        mobile-sidebar fixed inset-y-0 left-0 z-50 shrink-0 transform border-r border-verde-900 bg-verde-700 text-verde-200 flex flex-col transition-all duration-300 ease-in-out
+        mobile-sidebar fixed inset-y-0 left-0 z-50 shrink-0 transform border-r border-marino-900 bg-marino-700 text-marino-200 flex flex-col transition-all duration-300 ease-in-out
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         w-64
         md:relative md:translate-x-0
@@ -111,7 +111,7 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
         <span className="hidden md:inline">
           <Logo tono="claro" conNombre={!isCollapsed} />
         </span>
-        <p className={`mt-3 text-[11px] uppercase tracking-widest text-verde-300 ${isCollapsed ? 'md:hidden' : ''}`}>
+        <p className={`mt-3 text-[11px] uppercase tracking-widest text-marino-300 ${isCollapsed ? 'md:hidden' : ''}`}>
           Jose Ponce Carlos
         </p>
       </div>
@@ -130,10 +130,10 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
               to={item.to}
               onClick={closeMobileMenu}
               aria-current={esActivo ? 'page' : undefined}
-              className={`flex items-center gap-3 px-4 py-3 border-l-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-arcilla-300 ${
+              className={`flex items-center gap-3 px-4 py-3 border-l-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-coral-300 ${
                 esActivo
-                  ? "border-arcilla-400 bg-white/10 text-crema font-semibold"
-                  : "border-transparent hover:bg-white/5 hover:text-crema"
+                  ? "border-coral-400 bg-white/10 text-arena-200 font-semibold"
+                  : "border-transparent hover:bg-white/5 hover:text-arena-200"
               } ${isCollapsed ? 'md:justify-center md:px-0' : ''}`}
               title={item.title}
             >
@@ -148,7 +148,7 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
         })}
       </nav>
 
-      <div className="px-4 py-3 border-t border-white/10 text-[11px] uppercase tracking-widest text-verde-300">
+      <div className="px-4 py-3 border-t border-white/10 text-[11px] uppercase tracking-widest text-marino-300">
         {isCollapsed ? (
           <p className="text-center uppercase">{user?.rol}</p>
         ) : (
