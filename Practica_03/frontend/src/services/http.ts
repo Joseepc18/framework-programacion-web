@@ -1,5 +1,5 @@
 // src/services/http.ts
-// Cliente HTTP centralizado para el consumo de la API RESTful de MultiCatálogo.
+// Cliente HTTP centralizado para el consumo de la API RESTful de JP Mercantil.
 // Inyecta automáticamente el token JWT en la cabecera Authorization: Bearer <token>
 // y estandariza el manejo de errores (ApiError).
 

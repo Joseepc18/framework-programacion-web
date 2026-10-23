@@ -1,9 +1,9 @@
 import { defineConfig } from '@vite-pwa/assets-generator/config'
 
 // Genera los PNG de la PWA a partir del SVG cuadrado de 512 px.
-// La bolsa original queda dentro del círculo seguro del icono maskable.
+// El ícono de tienda queda dentro del círculo seguro del icono maskable.
 // Comando: npm run generate-pwa-assets
-const background = '#4f35ff'
+const background = '#0e2a47'
 
 export default defineConfig({
   headLinkOptions: { preset: '2023' },

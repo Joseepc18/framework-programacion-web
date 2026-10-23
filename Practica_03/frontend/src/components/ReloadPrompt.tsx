@@ -21,7 +21,7 @@ export default function ReloadPrompt() {
     <div
       role="status"
       id="reload-prompt"
-      className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 max-w-sm rounded-xl border border-white/10 bg-[#1a1033] p-4 text-white shadow-2xl"
+      className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 max-w-sm border border-white/10 bg-[#1a1033] p-4 text-white shadow-2xl"
     >
       <p className="text-sm">
         {needRefresh
@@ -34,7 +34,7 @@ export default function ReloadPrompt() {
             id="reload-prompt-update"
             type="button"
             onClick={() => updateServiceWorker(true)}
-            className="min-h-[44px] flex-1 rounded-lg bg-violet-600 px-4 text-sm font-medium hover:bg-violet-500"
+            className="min-h-[44px] flex-1 bg-violet-600 px-4 text-sm font-medium hover:bg-violet-500"
           >
             Actualizar
           </button>
@@ -43,7 +43,7 @@ export default function ReloadPrompt() {
           id="reload-prompt-close"
           type="button"
           onClick={cerrar}
-          className="min-h-[44px] flex-1 rounded-lg border border-white/20 px-4 text-sm hover:bg-white/10"
+          className="min-h-[44px] flex-1 border border-white/20 px-4 text-sm hover:bg-papel/10"
         >
           Cerrar
         </button>
