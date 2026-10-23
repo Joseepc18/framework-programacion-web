@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, type Rol } from "../context/AuthContext";
 import { apiFetch } from "../services/http";
+import Logo from "./Logo";
 
 const Registro = () => {
   const [nombre, setNombre] = useState<string>("");
@@ -56,100 +57,114 @@ const Registro = () => {
       });
   };
 
+  const campo =
+    "w-full border border-linea bg-white px-4 py-3 text-tinta placeholder:text-piedra outline-none transition focus:border-marino-600 focus:ring-1 focus:ring-marino-600";
+  const etiqueta = "mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-600";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8 border border-slate-200">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-slate-900">Crear cuenta</h2>
-          <p className="text-slate-500 mt-2">
-            Únete a MultiCatálogo y empieza a comprar
+    <div className="grid min-h-screen bg-fondo md:grid-cols-2">
+      <aside className="hidden flex-col justify-between bg-marino-700 p-12 text-arena-200 md:flex">
+        <Logo tono="claro" size={44} />
+        <div>
+          <h1 className="max-w-md font-display text-5xl leading-tight">
+            Una cuenta, tu propia red.
+          </h1>
+          <p className="mt-6 max-w-md text-marino-200">
+            Si llegas con un código de invitación, tu cuenta queda en la red de quien
+            te invitó y ambos ganan con cada compra.
           </p>
         </div>
+        <p className="text-xs uppercase tracking-widest text-marino-300">Jose Ponce Carlos</p>
+      </aside>
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 text-center border border-red-200">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Nombre completo
-            </label>
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition"
-              placeholder="Ana García"
-              required
-            />
+      <main className="flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-10 md:hidden">
+            <Logo />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Correo Electrónico
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition"
-              placeholder="nombre@upse.edu.ec"
-              required
-            />
-          </div>
+          <h2 className="font-display text-4xl text-tinta">Crear cuenta</h2>
+          <p className="mt-2 text-slate-600">Empieza a comprar en JP Mercantil.</p>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition"
-              placeholder="••••••"
-              minLength={6}
-              required
-            />
-          </div>
+          {error && (
+            <div className="mt-6 border-l-4 border-coral-500 bg-coral-50 p-3 text-sm text-coral-700">
+              {error}
+            </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Código de referido <span className="text-slate-400 font-normal">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              value={ref}
-              onChange={(e) => setRef(e.target.value.toUpperCase())}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition font-mono uppercase"
-              placeholder="LUIS"
-            />
-            {refInicial && (
-              <p className="text-xs text-indigo-600 mt-1">
-                Invitado por el código {refInicial}
-              </p>
-            )}
-          </div>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div>
+              <label className={etiqueta}>Nombre completo</label>
+              <input
+                type="text"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className={campo}
+                placeholder="Ana García"
+                required
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Creando cuenta..." : "Crear Cuenta"}
-          </button>
-        </form>
+            <div>
+              <label className={etiqueta}>Correo electrónico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={campo}
+                placeholder="nombre@upse.edu.ec"
+                required
+              />
+            </div>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
-          ¿Ya tienes cuenta?{" "}
-          <Link to="/login" className="text-indigo-600 font-semibold hover:underline">
-            Inicia sesión
-          </Link>
-        </p>
-      </div>
+            <div>
+              <label className={etiqueta}>Contraseña</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={campo}
+                placeholder="••••••"
+                minLength={6}
+                required
+              />
+            </div>
+
+            <div>
+              <label className={etiqueta}>
+                Código de referido <span className="font-normal normal-case tracking-normal text-slate-400">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={ref}
+                onChange={(e) => setRef(e.target.value.toUpperCase())}
+                className={`${campo} font-mono uppercase`}
+                placeholder="LUIS"
+              />
+              {refInicial && (
+                <p className="mt-1 text-xs text-marino-600">
+                  Invitado por el código {refInicial}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-marino-700 py-3 font-semibold text-arena-200 transition hover:bg-marino-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Creando cuenta..." : "Crear cuenta"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-sm text-slate-600">
+            ¿Ya tienes cuenta?{" "}
+            <Link to="/login" className="font-semibold text-coral-600 underline underline-offset-4 hover:text-coral-700">
+              Inicia sesión
+            </Link>
+          </p>
+        </div>
+      </main>
     </div>
   );
 };
