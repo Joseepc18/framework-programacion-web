@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	// Importamos pgx para leer filas con sus tipos nativos de PostgreSQL.
 	"github.com/jackc/pgx/v5"
@@ -48,6 +49,13 @@ func normalizarPagina(pageStr, limitStr string) (int, int, int) {
 // itoa convierte un entero a texto para reutilizar normalizarPagina.
 func itoa(n int) string {
 	return strconv.Itoa(n)
+}
+
+// numeroDePedido arma el código legible del pedido: MC-AAMMDD-<id>.
+// El id es único, de modo que dos pedidos nunca comparten número aunque
+// se creen en el mismo instante.
+func numeroDePedido(creado time.Time, pedidoID int) string {
+	return "MC-" + creado.Format("060102") + "-" + strconv.Itoa(pedidoID)
 }
 
 // seleccionPedidos define las columnas comunes a cabecera de pedido.
