@@ -49,7 +49,7 @@ const AdminUsuarios = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Administración de Usuarios</h1>
+        <h1 className="text-3xl uppercase text-marino-700">Administración de Usuarios</h1>
         <p className="text-slate-500 mt-1">Cuentas registradas, roles y estado de acceso.</p>
       </div>
 
@@ -62,25 +62,25 @@ const AdminUsuarios = () => {
             setPagina(1);
           }}
           placeholder="Buscar por nombre o correo..."
-          className="w-full sm:w-96 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none"
+          className="w-full sm:w-96 px-4 py-2 border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none"
         />
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+        <div className="bg-coral-50 text-coral-700 p-3 text-sm mb-4 border border-coral-200 border-l-4 border-l-coral-500">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-papel border border-linea overflow-hidden">
         {cargando ? (
           <p className="p-6 text-slate-500">Cargando usuarios...</p>
         ) : usuarios.length === 0 ? (
           <p className="p-6 text-slate-500">No hay usuarios que coincidan con la búsqueda.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+            <table className="w-full tabular-nums text-sm">
+              <thead className="bg-arena-100 text-marino-700 uppercase tracking-widest text-xs border-b border-marino-700">
                 <tr>
                   <th className="text-left p-3">Nombre</th>
                   <th className="text-left p-3">Correo</th>
@@ -89,15 +89,15 @@ const AdminUsuarios = () => {
                   <th className="text-right p-3">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-linea">
                 {usuarios.map((u) => (
-                  <tr key={u.id}>
+                  <tr key={u.id} className="hover:bg-arena-50">
                     <td className="p-3 font-medium text-slate-800">{u.nombre || "—"}</td>
                     <td className="p-3 text-slate-600">{u.email}</td>
                     <td className="p-3 text-center">
                       <span
-                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                          u.rol === "admin" ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-700"
+                        className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 ${
+                          u.rol === "admin" ? "bg-marino-700 text-arena-200" : "bg-slate-100 text-slate-700"
                         }`}
                       >
                         {u.rol === "admin" ? "Admin" : "Cliente"}
@@ -105,8 +105,8 @@ const AdminUsuarios = () => {
                     </td>
                     <td className="p-3 text-center">
                       <span
-                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                          u.activo ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 ${
+                          u.activo ? "bg-turquesa-100 text-turquesa-800" : "bg-coral-100 text-coral-700"
                         }`}
                       >
                         {u.activo ? "Activo" : "Inactivo"}
@@ -134,7 +134,7 @@ const AdminUsuarios = () => {
                           )
                         }
                         className={`font-medium px-2 py-2 min-h-11 hover:underline ${
-                          u.activo ? "text-red-600" : "text-green-600"
+                          u.activo ? "text-coral-600" : "text-turquesa-700"
                         }`}
                       >
                         {u.activo ? "Desactivar" : "Activar"}
@@ -153,7 +153,7 @@ const AdminUsuarios = () => {
           <button
             onClick={() => setPagina((p) => Math.max(1, p - 1))}
             disabled={pagina === 1}
-            className="px-3 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-3 py-2 min-h-11 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Anterior
           </button>
@@ -163,7 +163,7 @@ const AdminUsuarios = () => {
           <button
             onClick={() => setPagina((p) => Math.min(paginas, p + 1))}
             disabled={pagina === paginas}
-            className="px-3 py-2 min-h-11 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-3 py-2 min-h-11 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Siguiente
           </button>
