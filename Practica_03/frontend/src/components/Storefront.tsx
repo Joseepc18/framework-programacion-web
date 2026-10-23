@@ -52,7 +52,7 @@ const Storefront = () => {
   return (
     <div className="space-y-20 pb-8">
       {/* ===== PRESENTACIÓN ===== */}
-      <section className="grid items-center gap-10 border-b border-linea pb-16 pt-4 lg:grid-cols-[1.1fr_1fr]">
+      <section className="relative grid min-h-[calc(100svh-6rem)] items-center gap-10 border-b border-linea pb-20 pt-4 md:min-h-[calc(100svh-8rem)] lg:grid-cols-[1.1fr_1fr]">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-coral-600">
             Tienda con red de ventas
@@ -100,10 +100,21 @@ const Storefront = () => {
                 </Link>
               ))}
         </div>
+
+        {/* Indicador de desplazamiento hacia la siguiente sección */}
+        <a
+          href="#categorias"
+          className="absolute bottom-4 left-0 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-marino-700 hover:text-coral-600"
+        >
+          Explorar
+          <svg className="h-4 w-4 motion-safe:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </a>
       </section>
 
       {/* ===== CATEGORÍAS ===== */}
-      <section className="grid gap-8 lg:grid-cols-[1fr_2fr]">
+      <section id="categorias" className="grid scroll-mt-4 gap-8 lg:grid-cols-[1fr_2fr]">
         <div>
           <h2 className="text-3xl text-tinta">Categorías</h2>
           <p className="mt-3 text-slate-600">
