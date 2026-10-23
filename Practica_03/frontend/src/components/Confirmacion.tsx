@@ -19,20 +19,20 @@ const Confirmacion = () => {
   // Si no hay datos de pedido (acceso directo a la URL), mostramos un mensaje genérico
   if (!pedido) {
     return (
-      <div className="bg-white p-10 rounded-lg border border-slate-200 text-center">
+      <div className="bg-papel p-10 border border-linea text-center">
         <div className="text-5xl mb-4">✅</div>
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">¡Gracias por tu compra!</h1>
+        <h1 className="text-3xl uppercase text-marino-700 mb-2">¡Gracias por tu compra!</h1>
         <p className="text-slate-500 mb-6">Tu pedido ha sido registrado correctamente.</p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
             to="/mis-pedidos"
-            className="inline-block bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition"
+            className="inline-block bg-turquesa-700 text-white font-semibold px-6 py-3 hover:bg-turquesa-800 transition"
           >
             Ver mis pedidos
           </Link>
           <Link
             to="/tienda"
-            className="inline-block bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
+            className="inline-block bg-marino-700 text-arena-200 font-semibold px-6 py-3 hover:bg-marino-800 transition"
           >
             Volver a la Tienda
           </Link>
@@ -43,12 +43,12 @@ const Confirmacion = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="bg-green-600 text-white p-8 text-center">
+      <div className="bg-papel border border-linea overflow-hidden">
+        <div className="bg-turquesa-700 text-white p-8 text-center">
           <div className="text-5xl mb-3">✓</div>
           <h1 className="text-2xl font-bold">¡Pedido confirmado!</h1>
-          <p className="text-green-100 mt-1">
-            Número de pedido: <span className="font-mono font-bold">{pedido.numero}</span>
+          <p className="text-turquesa-100 mt-1">
+            Número de pedido: <span className="font-mono font-bold text-coral-400">{pedido.numero}</span>
           </p>
         </div>
 
@@ -72,8 +72,8 @@ const Confirmacion = () => {
             </div>
           </div>
 
-          <h2 className="font-bold text-slate-800 mb-3">Detalle del pedido</h2>
-          <div className="space-y-2 border-b border-slate-100 pb-4 mb-4">
+          <h2 className="font-display text-xl uppercase text-marino-700 mb-3">Detalle del pedido</h2>
+          <div className="space-y-2 border-b border-linea pb-4 mb-4">
             {pedido.items.map((item, idx) => (
               <div key={idx} className="flex justify-between text-sm">
                 <span className="text-slate-600">
@@ -86,8 +86,8 @@ const Confirmacion = () => {
             ))}
           </div>
           <div className="flex justify-between items-center mb-8">
-            <span className="font-bold text-slate-800">Total pagado</span>
-            <span className="text-2xl font-bold text-green-600">
+            <span className="text-xs font-semibold uppercase tracking-widest text-slate-600">Total pagado</span>
+            <span className="font-display text-4xl text-marino-700">
               ${pedido.total.toFixed(2)}
             </span>
           </div>
@@ -95,13 +95,13 @@ const Confirmacion = () => {
           <div className="flex gap-4">
             <Link
               to="/mis-pedidos"
-              className="flex-1 text-center bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition"
+              className="flex-1 text-center bg-turquesa-700 text-white font-semibold py-3 hover:bg-turquesa-800 transition"
             >
               Ver mis pedidos
             </Link>
             <Link
               to="/tienda"
-              className="flex-1 text-center bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition"
+              className="flex-1 text-center bg-marino-700 text-arena-200 font-semibold py-3 hover:bg-marino-800 transition"
             >
               Seguir Comprando
             </Link>

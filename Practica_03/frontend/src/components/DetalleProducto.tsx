@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProductoById } from '../services/productosService';
 import type { Producto } from '../data/productos';
 import { useCart } from '../context/CartContext';
+import ImagenProducto from './ImagenProducto';
 
 const DetalleProducto = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,9 +55,9 @@ const DetalleProducto = () => {
 
   if (!producto) {
     return (
-      <div className="bg-white p-10 rounded-lg border border-slate-200 text-center">
+      <div className="bg-papel p-10 border border-linea text-center">
         <p className="text-slate-600 text-lg mb-4">Producto no encontrado.</p>
-        <Link to="/catalogo" className="text-indigo-600 font-semibold hover:underline">
+        <Link to="/catalogo" className="text-coral-600 font-semibold underline underline-offset-4 hover:text-coral-700">
           ← Volver al catálogo
         </Link>
       </div>
@@ -81,7 +82,7 @@ const DetalleProducto = () => {
     <div>
       <button
         onClick={() => navigate(-1)}
-        className="text-indigo-600 font-semibold hover:underline mb-6"
+        className="mb-6 text-sm font-semibold uppercase tracking-widest text-marino-700 hover:text-coral-600"
       >
         ← Volver
       </button>
@@ -89,23 +90,29 @@ const DetalleProducto = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* ===== GALERÍA DE IMÁGENES ===== */}
         <div>
-          <img
-            src={imagenes[imagenActiva]}
-            alt={producto.nombre}
+          <button
+            type="button"
             onClick={() => setLightboxAbierto(true)}
-            className="w-full h-80 md:h-96 object-cover rounded-xl border border-slate-200 cursor-zoom-in"
-          />
+            className="block w-full cursor-zoom-in border border-linea bg-papel p-2"
+            aria-label="Ver imagen a pantalla completa"
+          >
+            <ImagenProducto
+              src={imagenes[imagenActiva]}
+              alt={producto.nombre}
+              className="h-80 w-full object-cover md:h-96"
+            />
+          </button>
           <div className="flex gap-3 mt-4">
             {imagenes.map((img, idx) => (
               <button
                 key={img}
                 onClick={() => setImagenActiva(idx)}
-                className={`rounded-lg overflow-hidden border-2 transition ${idx === imagenActiva
-                    ? "border-indigo-600"
+                className={`overflow-hidden border-2 transition ${idx === imagenActiva
+                    ? "border-coral-500"
                     : "border-transparent opacity-70 hover:opacity-100"
                   }`}
               >
-                <img src={img} alt={`Vista ${idx + 1}`} className="w-20 h-16 object-cover" />
+                <ImagenProducto src={img} alt={`Vista ${idx + 1}`} className="w-20 h-16 object-cover" />
               </button>
             ))}
           </div>
@@ -113,20 +120,21 @@ const DetalleProducto = () => {
 
         {/* ===== INFORMACIÓN DEL PRODUCTO ===== */}
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-500 font-semibold">
+          <p className="text-xs font-semibold uppercase tracking-widest text-coral-600">
             {producto.categoria}
           </p>
-          <h1 className="text-3xl font-bold text-slate-800 mt-1 mb-3">{producto.nombre}</h1>
-          <p className="text-3xl font-bold text-indigo-600 mb-6">
+          <h1 className="mt-2 font-display text-4xl leading-tight text-tinta md:text-5xl">{producto.nombre}</h1>
+          <div className="my-5 h-1 w-16 bg-coral-500" />
+          <p className="mb-6 font-display text-5xl text-marino-700 tabular-nums">
             ${producto.precio.toFixed(2)}
           </p>
           <p className="text-slate-600 leading-relaxed mb-8">{producto.descripcion}</p>
 
           <button
             onClick={handleAddToCart}
-            className={`w-full md:w-auto px-10 py-4 rounded-lg font-bold transition shadow-md ${agregado
-                ? "bg-green-600 text-white"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
+            className={`w-full md:w-auto px-10 py-4 font-semibold uppercase tracking-wider transition ${agregado
+                ? "bg-turquesa-700 text-white"
+                : "bg-marino-700 text-arena-200 hover:bg-marino-800"
               }`}
           >
             {agregado ? "✓ Añadido al carrito" : "Añadir al Carrito"}
@@ -163,7 +171,7 @@ const DetalleProducto = () => {
             src={imagenes[imagenActiva]}
             alt={producto.nombre}
             onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] max-w-[85vw] object-contain rounded-lg"
+            className="max-h-[85vh] max-w-[85vw] object-contain"
           />
 
           <button
