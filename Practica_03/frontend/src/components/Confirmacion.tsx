@@ -20,7 +20,6 @@ const Confirmacion = () => {
   if (!pedido) {
     return (
       <div className="bg-papel p-10 border border-linea text-center">
-        <div className="text-5xl mb-4">✅</div>
         <h1 className="text-3xl uppercase text-marino-700 mb-2">¡Gracias por tu compra!</h1>
         <p className="text-slate-500 mb-6">Tu pedido ha sido registrado correctamente.</p>
         <div className="flex flex-wrap justify-center gap-3">
@@ -44,10 +43,9 @@ const Confirmacion = () => {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-papel border border-linea overflow-hidden">
-        <div className="bg-turquesa-700 text-white p-8 text-center">
-          <div className="text-5xl mb-3">✓</div>
-          <h1 className="text-2xl font-bold">¡Pedido confirmado!</h1>
-          <p className="text-turquesa-100 mt-1">
+        <div className="border-b-4 border-coral-500 bg-marino-700 p-8 text-center text-arena-200">
+          <h1 className="font-display text-4xl uppercase">¡Pedido confirmado!</h1>
+          <p className="mt-2 text-marino-200">
             Número de pedido: <span className="font-mono font-bold text-coral-400">{pedido.numero}</span>
           </p>
         </div>
