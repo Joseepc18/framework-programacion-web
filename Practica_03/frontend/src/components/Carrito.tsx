@@ -37,9 +37,9 @@ const Carrito = () => {
             {cart.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-papel p-4 border border-linea gap-4"
+                className="flex flex-col gap-4 bg-papel p-4 border border-linea sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-0 items-center gap-4">
                   <ImagenProducto
                     src={item.img}
                     alt={item.nombre}
@@ -55,7 +55,7 @@ const Carrito = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between gap-4">
                   {/* Control de cantidad */}
                   <div className="flex items-center border border-linea overflow-hidden">
                     <button
