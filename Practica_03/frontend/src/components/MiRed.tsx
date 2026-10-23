@@ -12,7 +12,7 @@ import Kpi from "./Kpi";
 const NIVEL_ESTILO: Record<number, { badge: string; border: string; tasa: string }> = {
   1: { badge: "bg-marino-100 text-marino-700", border: "border-marino-200", tasa: "10 %" },
   2: { badge: "bg-turquesa-100 text-turquesa-800", border: "border-turquesa-200", tasa: "5 %" },
-  3: { badge: "bg-pink-100 text-pink-700", border: "border-pink-200", tasa: "2 %" },
+  3: { badge: "bg-coral-100 text-coral-700", border: "border-coral-200", tasa: "2 %" },
 };
 
 // Componente recursivo: renderiza un referido y, debajo, a sus hijos
