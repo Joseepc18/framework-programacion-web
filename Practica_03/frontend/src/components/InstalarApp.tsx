@@ -45,7 +45,7 @@ export default function InstalarApp({ ubicacion }: { ubicacion: 'login' | 'navba
         <dialog
           ref={dialogo}
           aria-labelledby={tituloId}
-          className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm border border-linea bg-papel p-6 text-slate-700 shadow-xl backdrop:bg-slate-900/40"
+          className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm border border-linea bg-papel p-6 text-slate-700 backdrop:bg-slate-900/40"
         >
           <div className="flex items-start justify-between gap-2">
             <h2 id={tituloId} className="pt-2 text-lg font-bold text-slate-900">Instalar JP Mercantil</h2>
