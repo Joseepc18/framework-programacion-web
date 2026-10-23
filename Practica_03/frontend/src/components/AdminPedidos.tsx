@@ -112,7 +112,7 @@ const AdminPedidos = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Administración de Pedidos</h1>
+        <h1 className="text-3xl uppercase text-marino-700">Administración de Pedidos</h1>
         <p className="text-slate-500 mt-1">
           Ciclo de vida: pendiente → preparando → enviado → entregado (o cancelado).
         </p>
@@ -124,9 +124,9 @@ const AdminPedidos = () => {
           <button
             key={f.valor}
             onClick={() => cambiarFiltro(f.valor)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+            className={`px-3 py-1.5 text-sm font-medium transition ${
               filtro === f.valor
-                ? "bg-indigo-600 text-white"
+                ? "bg-marino-700 text-arena-200"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
@@ -136,18 +136,18 @@ const AdminPedidos = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+        <div className="bg-coral-50 text-coral-700 p-3 text-sm mb-4 border border-coral-200 border-l-4 border-l-coral-500">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-papel border border-linea overflow-hidden">
         {cargando ? (
           <p className="p-6 text-slate-500">Cargando pedidos...</p>
         ) : pedidos.length === 0 ? (
           <p className="p-6 text-slate-500">No hay pedidos con ese filtro.</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-linea">
             {pedidos.map((p) => (
               <li key={p.id}>
                 <div className="p-4 flex flex-wrap items-center gap-3">
@@ -169,7 +169,7 @@ const AdminPedidos = () => {
                       <select
                         value=""
                         onChange={(e) => e.target.value && transicionar(p, e.target.value as EstadoPedido)}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-indigo-600 outline-none"
+                        className="px-3 py-1.5 border border-slate-300 text-sm bg-papel focus:ring-2 focus:ring-indigo-600 outline-none"
                       >
                         <option value="">Cambiar estado...</option>
                         {TRANSICIONES[p.estado].map((destino) => (
@@ -192,7 +192,7 @@ const AdminPedidos = () => {
 
                 {/* Detalle con líneas del pedido */}
                 {abierto === p.id && (
-                  <div className="bg-slate-50 p-4 border-t border-slate-100">
+                  <div className="bg-slate-50 p-4 border-t border-linea">
                     {cargandoDetalle ? (
                       <p className="text-sm text-slate-500">Cargando detalle...</p>
                     ) : detalle ? (
@@ -230,7 +230,7 @@ const AdminPedidos = () => {
                                 <th className="text-right p-2">Subtotal</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-200">
+                            <tbody className="divide-y divide-linea">
                               {detalle.items.map((it) => (
                                 <tr key={it.producto_id}>
                                   <td className="p-2 text-slate-700">{it.nombre}</td>
@@ -246,7 +246,7 @@ const AdminPedidos = () => {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-red-600">No se pudo cargar el detalle.</p>
+                      <p className="text-sm text-coral-600">No se pudo cargar el detalle.</p>
                     )}
                   </div>
                 )}
@@ -262,7 +262,7 @@ const AdminPedidos = () => {
           <button
             onClick={() => setPagina((p) => Math.max(1, p - 1))}
             disabled={pagina === 1}
-            className="px-3 py-1.5 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-3 py-1.5 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Anterior
           </button>
@@ -272,7 +272,7 @@ const AdminPedidos = () => {
           <button
             onClick={() => setPagina((p) => Math.min(paginas, p + 1))}
             disabled={pagina === paginas}
-            className="px-3 py-1.5 rounded border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50"
+            className="px-3 py-1.5 border border-marino-700 text-marino-700 font-medium disabled:opacity-40 hover:bg-marino-700 hover:text-arena-200"
           >
             Siguiente
           </button>
