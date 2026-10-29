@@ -1,0 +1,32 @@
+# SIGO-Dental
+
+Sistema integral de gestión odontológica y expediente clínico digital: aplicación web responsive para clínicas odontológicas (pacientes, expediente y odontograma, presupuestos, agenda, caja e inventario).
+
+Proyecto de la materia Framework de Programación Web (UPSE). Se construye a partir del Documento de Requerimientos de Software v1.0 (29/10/2026). Trabajo individual.
+
+## Estado
+
+Sin código todavía. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+
+## Alcance
+
+- **Dentro:** portal web responsive para personal clínico y administrativo, con roles (administrador TI, recepcionista o cajero, odontólogo, asistente dental, auditor o contador).
+- **Fuera de la Fase 1:** app móvil nativa, procesamiento de imágenes 3D y visor DICOM/PACS.
+- **Integraciones externas** (facturación fiscal, WhatsApp/SMS, pasarela de pagos): TODO confirmar. Propuesta: simularlas detrás de interfaces para no depender de servicios de pago.
+
+## Stack
+
+El mismo de la Práctica 03:
+
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS.
+- **Backend:** Go con Fiber.
+- **Datos:** PostgreSQL y Redis (caché).
+- **Despliegue:** Vercel (frontend), Render (API y Redis) y Neon (PostgreSQL).
+
+## Instalación, ejecución y pruebas
+
+TODO: se documentan cuando exista el código.
+
+## Documentación
+
+- Arquitectura: [docs/architecture.md](docs/architecture.md)
