@@ -9,7 +9,9 @@ React SPA ──HTTPS/JWT──► API Go (Fiber) ──► PostgreSQL
                               └──────────► Redis (caché)
 ```
 
-Capas del backend, tomadas de la Práctica 03: `routes` → `controllers` → `repository`, con la inyección de dependencias armada en `main.go`. Los controladores dependen de interfaces, no de implementaciones concretas.
+Capas del backend (`backend/`), tomadas de la Práctica 03: `routes` → `controllers` → `repository`, con la inyección de dependencias armada en `main.go`. Los controladores dependen de interfaces (`controllers/dependencias.go`), no de implementaciones concretas. `config` abre el pool de PostgreSQL y `cache` el cliente de Redis.
+
+`GET /api/health` informa el estado de las dependencias: `200 ok` si responden ambas, `200 degraded` si Redis no responde (la API puede seguir sirviendo) y `503` si PostgreSQL no responde.
 
 ## Decisiones
 
