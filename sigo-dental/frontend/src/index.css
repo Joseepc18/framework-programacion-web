@@ -51,6 +51,29 @@
   --color-chip-alerta-texto: #ffd1d8;
   --color-alerta-valor: #fda4af;
 
+  /* Estados de la cita (docs/diseno.md): cada uno lleva además su texto, el color solo lo refuerza. */
+  --color-cita-programado-fondo: rgba(255, 255, 255, 0.08);
+  --color-cita-programado-borde: rgba(255, 255, 255, 0.22);
+  --color-cita-programado-texto: rgba(245, 247, 255, 0.88);
+  --color-cita-confirmado-fondo: rgba(45, 212, 191, 0.08);
+  --color-cita-confirmado-borde: rgba(45, 212, 191, 0.45);
+  --color-cita-confirmado-texto: #ccfbf1;
+  --color-cita-en-sala-fondo: rgba(255, 255, 255, 0.16);
+  --color-cita-en-sala-borde: rgba(255, 255, 255, 0.5);
+  --color-cita-en-sala-texto: #f5f7ff;
+  --color-cita-en-atencion-fondo: rgba(45, 212, 191, 0.2);
+  --color-cita-en-atencion-borde: rgba(45, 212, 191, 0.6);
+  --color-cita-en-atencion-texto: #99f6e4;
+  --color-cita-atendido-fondo: rgba(255, 255, 255, 0.05);
+  --color-cita-atendido-borde: rgba(255, 255, 255, 0.14);
+  --color-cita-atendido-texto: rgba(245, 247, 255, 0.62);
+  --color-cita-cancelado-fondo: transparent;
+  --color-cita-cancelado-borde: rgba(255, 255, 255, 0.28);
+  --color-cita-cancelado-texto: rgba(245, 247, 255, 0.5);
+  --color-cita-no-asistio-fondo: rgba(251, 113, 133, 0.1);
+  --color-cita-no-asistio-borde: rgba(251, 113, 133, 0.4);
+  --color-cita-no-asistio-texto: #ffd1d8;
+
   --color-mancha-turquesa: #14b8a6;
   --color-mancha-violeta: #7c3aed;
 }
@@ -133,4 +156,37 @@
 /* La altura de la aplicación es la del viewport; el scroll vive dentro de <main>. */
 .app-layout {
   height: 100dvh;
+}
+
+/* Comprobante impreso: solo el contenido, en blanco y negro y sin el marco de la aplicación. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  body::before,
+  body::after,
+  header,
+  aside,
+  .no-imprimir {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block;
+  }
+
+  .app-layout main {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .comprobante,
+  .comprobante * {
+    color: #000 !important;
+    border-color: #000 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
 }

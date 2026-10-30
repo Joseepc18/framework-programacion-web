@@ -54,6 +54,16 @@ Color base `#070B16` con dos manchas de luz desenfocadas, detrás del contenido:
 | En atención | `rgba(45, 212, 191, 0.20)` | `rgba(45, 212, 191, 0.60)` | `#99F6E4` |
 | Atendido | `rgba(255, 255, 255, 0.05)` | `rgba(255, 255, 255, 0.14)` | `rgba(245, 247, 255, 0.62)` |
 
+Los estados Programado y Confirmado, antes agrupados, se distinguen en la agenda, y se añaden los tres que faltaban. Cada estado muestra siempre su nombre (el color solo lo refuerza); Cancelado además va tachado y con borde punteado.
+
+| Estado | Relleno | Borde | Texto |
+|---|---|---|---|
+| Programado | `rgba(255, 255, 255, 0.08)` | `rgba(255, 255, 255, 0.22)` | `rgba(245, 247, 255, 0.88)` |
+| Confirmado | `rgba(45, 212, 191, 0.08)` | `rgba(45, 212, 191, 0.45)` | `#CCFBF1` |
+| En sala de espera | `rgba(255, 255, 255, 0.16)` | `rgba(255, 255, 255, 0.50)` | `#F5F7FF` |
+| Cancelado | transparente | punteado `rgba(255, 255, 255, 0.28)` | `rgba(245, 247, 255, 0.50)`, tachado |
+| No asistió | `rgba(251, 113, 133, 0.10)` | `rgba(251, 113, 133, 0.40)` | `#FFD1D8` |
+
 ## Tipografía
 
 - **Sora** (400, 500 y 600) para la interfaz.

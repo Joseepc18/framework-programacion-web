@@ -2,12 +2,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	// os y os/signal detectan cuando se detiene la aplicación (Ctrl+C).
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
+	// Incrusta la base de zonas horarias: la agenda la necesita aunque el sistema no la tenga (Windows, contenedores mínimos).
+	_ "time/tzdata"
 
 	"github.com/gofiber/fiber/v2"
 	// CORS gestiona la seguridad entre distintos puertos y dominios.
@@ -15,6 +20,7 @@ import (
 	"sigo-dental-backend/cache"
 	"sigo-dental-backend/config"
 	"sigo-dental-backend/controllers"
+	"sigo-dental-backend/notificaciones"
 	"sigo-dental-backend/repository"
 	"sigo-dental-backend/routes"
 )
@@ -49,9 +55,25 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Avisos de citas (F1-4): el adaptador se elige con NOTIFICADOR; sin credenciales de proveedor se usa el simulado.
+	notificador, err := notificaciones.NuevoNotificador(os.Getenv("NOTIFICADOR"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	urlFrontend := strings.TrimRight(strings.TrimSpace(os.Getenv("FRONTEND_URL")), "/")
+	if urlFrontend == "" {
+		urlFrontend = "http://localhost:5173"
+	}
+	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend)
+
 	manejadores := routes.Manejadores{
 		Health:    controllers.NuevoHealthController(repositorio, almacen),
 		Auth:      auth,
+		Catalogo:  controllers.NuevoCatalogoController(repositorio),
+		Pacientes: controllers.NuevoPacientesController(repositorio),
+		Citas:     controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
+		Cobros:    controllers.NuevoCobrosController(repositorio),
 		JWTSecret: secretoJWT,
 	}
 
@@ -73,6 +95,11 @@ func main() {
 
 	routes.SetupRoutes(app, manejadores)
 
+	// El planificador envía los recordatorios de 48 h y 24 h; se detiene junto con la API.
+	ctxPlanificador, detenerPlanificador := context.WithCancel(context.Background())
+	defer detenerPlanificador()
+	go planificarRecordatorios(ctxPlanificador, avisos, intervaloDeRecordatorios())
+
 	// Al recibir Ctrl+C (o la señal de terminación) Fiber se apaga de forma ordenada:
 	// app.Listen retorna, main termina y se ejecutan los defer que cierran las conexiones.
 	go func() {
@@ -89,5 +116,37 @@ func main() {
 	}
 	if err := app.Listen(":" + puerto); err != nil {
 		log.Println(err)
+	}
+}
+
+// intervaloDeRecordatorios lee cada cuánto revisa el planificador (segundos en NOTIFICACIONES_INTERVALO; 60 por defecto).
+func intervaloDeRecordatorios() time.Duration {
+	segundos, err := strconv.Atoi(os.Getenv("NOTIFICACIONES_INTERVALO"))
+	if err != nil || segundos < 5 {
+		segundos = 60
+	}
+	return time.Duration(segundos) * time.Second
+}
+
+// planificarRecordatorios revisa las citas próximas al arrancar y luego cada intervalo, hasta que se cancele el contexto.
+// Procesar es idempotente, así que una revisión repetida o una reiniciada no duplica mensajes.
+func planificarRecordatorios(ctx context.Context, servicio *notificaciones.Servicio, intervalo time.Duration) {
+	revisar := func() {
+		if enviados, err := servicio.Procesar(ctx); err != nil {
+			log.Printf("recordatorios: %v", err)
+		} else if enviados > 0 {
+			log.Printf("recordatorios enviados: %d", enviados)
+		}
+	}
+	revisar()
+	reloj := time.NewTicker(intervalo)
+	defer reloj.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-reloj.C:
+			revisar()
+		}
 	}
 }

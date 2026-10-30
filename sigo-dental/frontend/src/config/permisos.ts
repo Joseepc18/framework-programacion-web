@@ -2,12 +2,16 @@
 // Esto solo decide qué se muestra: la autoridad real es el backend (RequireRoles, responde 403).
 import {
   Activity,
+  Receipt,
+  CalendarDays,
   ClipboardList,
   FileSearch,
   HandHelping,
   House,
+  Library,
   Shield,
   Stethoscope,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -54,6 +58,10 @@ export const rutaDeArea = (area: AreaRol) => `/area/${area.slug}`;
 export const MENU: readonly ElementoMenu[] = [
   { to: '/', label: 'Inicio', icon: House },
   { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'] },
+  { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'] },
+  { to: '/pacientes', label: 'Pacientes', icon: Users, roles: ['recepcionista', 'odontologo', 'asistente'] },
+  { to: '/cobros', label: 'Cobros', icon: Receipt, roles: ['recepcionista', 'auditor'] },
+  { to: '/agenda', label: 'Agenda', icon: CalendarDays, roles: ['recepcionista', 'odontologo', 'asistente'] },
   ...AREAS.map((area) => ({ to: rutaDeArea(area), label: area.label, icon: area.icon, roles: [area.rol] })),
 ];
 
