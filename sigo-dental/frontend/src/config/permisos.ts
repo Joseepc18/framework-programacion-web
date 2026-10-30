@@ -6,6 +6,7 @@ import {
   FileSearch,
   HandHelping,
   House,
+  Library,
   Shield,
   Stethoscope,
   type LucideIcon,
@@ -54,6 +55,7 @@ export const rutaDeArea = (area: AreaRol) => `/area/${area.slug}`;
 export const MENU: readonly ElementoMenu[] = [
   { to: '/', label: 'Inicio', icon: House },
   { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'] },
+  { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'] },
   ...AREAS.map((area) => ({ to: rutaDeArea(area), label: area.label, icon: area.icon, roles: [area.rol] })),
 ];
 
