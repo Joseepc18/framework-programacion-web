@@ -4,6 +4,7 @@ import RutaProtegida from './components/RutaProtegida';
 import { AREAS, rutaDeArea } from './config/permisos';
 import { AuthProvider } from './context/AuthContext';
 import AgendaPage from './pages/AgendaPage';
+import AuditoriaPage from './pages/AuditoriaPage';
 import AreaRolPage from './pages/AreaRolPage';
 import CobroDetallePage from './pages/CobroDetallePage';
 import CobroFormPage from './pages/CobroFormPage';
@@ -39,6 +40,9 @@ const App = () => (
             <Route element={<RutaProtegida roles={['recepcionista']} />}>
               <Route path="pacientes/nuevo" element={<PacienteFormPage />} />
               <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
+            </Route>
+            <Route element={<RutaProtegida roles={['admin_ti', 'auditor']} />}>
+              <Route path="auditoria" element={<AuditoriaPage />} />
             </Route>
             <Route element={<RutaProtegida roles={['recepcionista', 'auditor']} />}>
               <Route path="cobros" element={<CobrosPage />} />

@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import AnamnesisCampos from '../components/AnamnesisCampos';
 import CabeceraPaciente from '../components/CabeceraPaciente';
 import { Aviso, Boton, BotonEnlace, Tarjeta } from '../components/ui';
@@ -7,6 +7,8 @@ import { useAuth } from '../context/useAuth';
 import { useAccion } from '../hooks/useAccion';
 import { useCarga } from '../hooks/useCarga';
 import { listarSimples, type ItemCatalogo } from '../services/catalogoService';
+import PestanaArchivos from './expediente/PestanaArchivos';
+import PestanaSignos from './expediente/PestanaSignos';
 import { actualizarAnamnesis, ETIQUETA_CANAL, obtenerPaciente, type Anamnesis, type PacienteDetalle } from '../services/pacienteService';
 
 const Dato = ({ etiqueta, children }: { etiqueta: string; children: ReactNode }) => (
@@ -99,31 +101,56 @@ const PestanaAnamnesis = ({ p, condiciones, puedeEditar, alGuardar }: PestanaAna
   );
 };
 
-const PESTANAS = [
+// Pestañas del expediente. Las clínicas solo las ven el odontólogo y el asistente (la recepción ve datos y anamnesis).
+interface Pestana {
+  id: string;
+  etiqueta: string;
+  clinica?: boolean;
+}
+
+const PESTANAS: readonly Pestana[] = [
   { id: 'datos', etiqueta: 'Datos del paciente' },
   { id: 'anamnesis', etiqueta: 'Anamnesis' },
-] as const;
+  { id: 'signos', etiqueta: 'Signos vitales', clinica: true },
+  { id: 'archivos', etiqueta: 'Archivos', clinica: true },
+];
 
-// Ficha del paciente: cabecera con la alerta médica y dos pestañas. Las pestañas clínicas
-// (odontograma, evolución, recetas...) se suman en la Fase 2.
+// Expediente del paciente: cabecera con la alerta médica y pestañas por módulo. La pestaña activa viaja en la URL
+// (?tab=) para poder enlazarla desde otras pantallas.
 const PacienteFichaPage = () => {
   const { id: idRuta } = useParams();
   const id = Number(idRuta);
   const { usuario } = useAuth();
+  const [parametros, setParametros] = useSearchParams();
   const paciente = useCarga(() => obtenerPaciente(id), `ficha-${id}`);
   const condiciones = useCarga(() => listarSimples('condiciones-criticas'), 'condiciones-activas');
-  const [activa, setActiva] = useState<(typeof PESTANAS)[number]['id']>('datos');
+  const esClinico = usuario?.rol === 'odontologo' || usuario?.rol === 'asistente';
+  const visibles = PESTANAS.filter((t) => !t.clinica || esClinico);
+  const activa = visibles.find((t) => t.id === parametros.get('tab'))?.id ?? 'datos';
 
   if (paciente.error) return <Aviso>{paciente.error}</Aviso>;
   if (!paciente.datos || !condiciones.datos) return <p>Cargando…</p>;
   const p = paciente.datos;
+
+  const contenido = () => {
+    switch (activa) {
+      case 'anamnesis':
+        return <PestanaAnamnesis key={p.id} p={p} condiciones={condiciones.datos ?? []} puedeEditar={esClinico} alGuardar={paciente.recargar} />;
+      case 'signos':
+        return <PestanaSignos pacienteId={p.id} />;
+      case 'archivos':
+        return <PestanaArchivos pacienteId={p.id} />;
+      default:
+        return <PestanaDatos p={p} />;
+    }
+  };
 
   return (
     <section className="space-y-6" aria-label={`Expediente de ${p.nombres} ${p.apellidos}`}>
       <CabeceraPaciente paciente={p} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Secciones del expediente" className="flex flex-wrap gap-2">
-          {PESTANAS.map((t) => (
+          {visibles.map((t) => (
             <button
               key={t.id}
               id={`tab-${t.id}`}
@@ -131,7 +158,7 @@ const PacienteFichaPage = () => {
               type="button"
               aria-selected={t.id === activa}
               aria-controls="panel-ficha"
-              onClick={() => setActiva(t.id)}
+              onClick={() => setParametros(t.id === 'datos' ? {} : { tab: t.id }, { replace: true })}
               className={`min-h-11 rounded-control border px-4 text-cuerpo transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento ${
                 t.id === activa ? 'border-item-activo-borde bg-item-activo font-semibold text-texto' : 'border-transparent text-texto-suave hover:bg-chip-neutro-fondo hover:text-texto'
               }`}
@@ -143,17 +170,7 @@ const PacienteFichaPage = () => {
         {usuario?.rol === 'recepcionista' && <BotonEnlace variante="secundario" to={`/pacientes/${p.id}/editar`}>Editar datos</BotonEnlace>}
       </div>
       <div id="panel-ficha" role="tabpanel" aria-labelledby={`tab-${activa}`}>
-        {activa === 'datos' ? (
-          <PestanaDatos p={p} />
-        ) : (
-          <PestanaAnamnesis
-            key={p.id}
-            p={p}
-            condiciones={condiciones.datos}
-            puedeEditar={usuario?.rol === 'odontologo' || usuario?.rol === 'asistente'}
-            alGuardar={paciente.recargar}
-          />
-        )}
+        {contenido()}
       </div>
     </section>
   );

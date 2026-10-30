@@ -61,3 +61,10 @@ export const minutosDe = (hhmm: string) => {
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 export const nombreDelDia = (fecha: Date) => DIAS[fecha.getDay()];
+
+// Fecha y hora local legibles ('30 oct 2026, 09:15') a partir de un instante ISO-8601.
+const FORMATO_FECHA_HORA = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+export const fechaHoraLocal = (iso: string) => FORMATO_FECHA_HORA.format(new Date(iso));
+
+const FORMATO_FECHA = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'short', year: 'numeric' });
+export const fechaLocal = (iso: string) => FORMATO_FECHA.format(new Date(iso));
