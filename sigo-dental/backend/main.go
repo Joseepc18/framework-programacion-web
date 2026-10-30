@@ -73,6 +73,7 @@ func main() {
 		Catalogo:  controllers.NuevoCatalogoController(repositorio),
 		Pacientes: controllers.NuevoPacientesController(repositorio),
 		Citas:     controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
+		Cobros:    controllers.NuevoCobrosController(repositorio),
 		JWTSecret: secretoJWT,
 	}
 

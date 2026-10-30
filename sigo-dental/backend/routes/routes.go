@@ -16,6 +16,7 @@ type Manejadores struct {
 	Catalogo  *controllers.CatalogoController
 	Pacientes *controllers.PacientesController
 	Citas     *controllers.CitasController
+	Cobros    *controllers.CobrosController
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
 	JWTSecret []byte
 }
@@ -49,6 +50,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarCatalogo(app, m, autenticado)
 	registrarPacientes(app, m, autenticado)
 	registrarCitas(app, m, autenticado)
+	registrarCobros(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -112,4 +114,18 @@ func registrarCatalogo(app *fiber.App, m Manejadores, autenticado fiber.Handler)
 
 	app.Get("/api/parametros", autenticado, cat.ListarParametros)
 	app.Put("/api/parametros/:clave", autenticado, admin, cat.ActualizarParametro)
+}
+
+// registrarCobros declara las rutas de facturación: la recepción cobra, registra pagos y anula; la recepción y el
+// auditor consultan. Los demás roles no ven cobros.
+func registrarCobros(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	consulta := middleware.RequireRoles(models.RolRecepcionista, models.RolAuditor)
+	recepcion := middleware.RequireRoles(models.RolRecepcionista)
+	cob := m.Cobros
+
+	app.Get("/api/cobros", autenticado, consulta, cob.ListarCobros)
+	app.Get("/api/cobros/:id", autenticado, consulta, cob.ObtenerCobro)
+	app.Post("/api/cobros", autenticado, recepcion, cob.CrearCobro)
+	app.Post("/api/cobros/:id/pagos", autenticado, recepcion, cob.RegistrarPago)
+	app.Post("/api/cobros/:id/anular", autenticado, recepcion, cob.AnularCobro)
 }

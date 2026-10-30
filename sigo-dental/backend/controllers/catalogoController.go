@@ -377,6 +377,9 @@ func (ctrl *CatalogoController) ActualizarParametro(c *fiber.Ctx) error {
 		}
 	}
 
+	if clave == ClaveMoneda && !monedaValida(valor) {
+		return errorCliente(c, fiber.StatusBadRequest, "La moneda debe ser un código ISO de tres letras mayúsculas, por ejemplo USD")
+	}
 	if clave == ClaveZonaHoraria {
 		if _, err := time.LoadLocation(valor); err != nil {
 			return errorCliente(c, fiber.StatusBadRequest, "La zona horaria debe ser un nombre IANA válido, por ejemplo America/Guayaquil")
@@ -395,4 +398,18 @@ const (
 	ClaveAgendaHoraInicio = "agenda_hora_inicio"
 	ClaveAgendaHoraFin    = "agenda_hora_fin"
 	ClaveZonaHoraria      = "zona_horaria"
+	ClaveMoneda           = "moneda"
 )
+
+// monedaValida acepta un código ISO 4217 de tres letras mayúsculas.
+func monedaValida(codigo string) bool {
+	if len(codigo) != 3 {
+		return false
+	}
+	for _, r := range codigo {
+		if r < 'A' || r > 'Z' {
+			return false
+		}
+	}
+	return true
+}

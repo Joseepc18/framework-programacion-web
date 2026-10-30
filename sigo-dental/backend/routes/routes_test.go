@@ -26,6 +26,7 @@ func appDePrueba(t *testing.T) *fiber.App {
 		Catalogo:  controllers.NuevoCatalogoController(nil),
 		Pacientes: controllers.NuevoPacientesController(nil),
 		Citas:     controllers.NuevoCitasController(nil, nil, secretoPrueba),
+		Cobros:    controllers.NuevoCobrosController(nil),
 		JWTSecret: secretoPrueba,
 	})
 	return app
@@ -222,6 +223,48 @@ func TestPermisosDeCitas(t *testing.T) {
 	}
 
 	for _, ruta := range []string{"/api/citas", "/api/citas/1", "/api/agenda/horario"} {
+		resp, err := app.Test(httptest.NewRequest("GET", ruta, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != fiber.StatusUnauthorized {
+			t.Errorf("GET %s sin token: estado = %d, se esperaba 401", ruta, resp.StatusCode)
+		}
+	}
+}
+
+// Solo la recepción cobra; el auditor consulta; el resto de los roles no ve cobros.
+func TestPermisosDeCobros(t *testing.T) {
+	app := appDePrueba(t)
+	prohibidos := []struct{ rol, metodo, ruta string }{
+		{models.RolOdontologo, "GET", "/api/cobros"},
+		{models.RolAsistente, "GET", "/api/cobros/1"},
+		{models.RolAdminTI, "GET", "/api/cobros"},
+		{models.RolAuditor, "POST", "/api/cobros"},
+		{models.RolAuditor, "POST", "/api/cobros/1/pagos"},
+		{models.RolAuditor, "POST", "/api/cobros/1/anular"},
+		{models.RolOdontologo, "POST", "/api/cobros"},
+		{models.RolAsistente, "POST", "/api/cobros/1/pagos"},
+		{models.RolAdminTI, "POST", "/api/cobros/1/anular"},
+	}
+	for _, p := range prohibidos {
+		t.Run(p.rol+" "+p.metodo+" "+p.ruta, func(t *testing.T) {
+			token, err := middleware.GenerarToken(secretoPrueba, 1, p.rol+"@sigo-dental.test", p.rol)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(p.metodo, p.ruta, nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != fiber.StatusForbidden {
+				t.Errorf("estado = %d, se esperaba 403", resp.StatusCode)
+			}
+		})
+	}
+	for _, ruta := range []string{"/api/cobros", "/api/cobros/1"} {
 		resp, err := app.Test(httptest.NewRequest("GET", ruta, nil))
 		if err != nil {
 			t.Fatal(err)
