@@ -13,7 +13,7 @@ Capas del backend (`backend/`), tomadas de la Práctica 03: `routes` → `contro
 
 `middleware` valida el JWT y los roles, y `models` agrupa los tipos compartidos y el contrato de errores.
 
-Frontend (`frontend/`): React con TypeScript, Vite, Tailwind y React Router. `src/components` tiene el layout (`Layout`, `Sidebar` y `Topbar`), `src/pages` las pantallas, y `src/services` el acceso a la API: `http.ts` es el cliente HTTP único y lee la URL base de `VITE_API_URL`; los demás servicios dependen de él.
+Frontend (`frontend/`): React con TypeScript, Vite, Tailwind y React Router. `src/components` tiene el layout (`Layout`, `Sidebar` y `Topbar`), `src/pages` las pantallas, y `src/services` el acceso a la API: `http.ts` es el cliente HTTP único y lee la URL base de `VITE_API_URL`; los demás servicios dependen de él. El estilo sale de los tokens del bloque `@theme` de `src/index.css` (dirección Aurora, ver `docs/diseno.md`); los componentes no escriben colores sueltos. Las fuentes Sora y JetBrains Mono se autoalojan con `@fontsource` para no depender de un tercero en tiempo de ejecución.
 
 `GET /api/health` informa el estado de las dependencias: `200 ok` si responden ambas, `200 degraded` si Redis no responde (la API puede seguir sirviendo) y `503` si PostgreSQL no responde.
 
