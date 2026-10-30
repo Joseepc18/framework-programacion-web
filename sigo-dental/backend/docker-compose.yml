@@ -1,3 +1,6 @@
+# Nombre propio del proyecto: evita chocar con otros compose cuya carpeta también se llama "backend".
+name: sigo-dental
+
 services:
   postgres:
     image: postgres:16
