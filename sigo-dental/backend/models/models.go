@@ -8,6 +8,8 @@ const (
 	RolOdontologo    = "odontologo"
 	RolAsistente     = "asistente"
 	RolAuditor       = "auditor"
+	// RolPaciente es la cuenta del portal del paciente (F2-8); no figura entre los cinco roles del documento.
+	RolPaciente = "paciente"
 )
 
 // APIError estandariza el formato de todas las respuestas de error HTTP de la API.

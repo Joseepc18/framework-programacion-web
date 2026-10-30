@@ -73,6 +73,18 @@ type Cita struct {
 	Fin                 time.Time `json:"fin"`
 }
 
+// CitaPortal es la cita tal como la ve el paciente en su portal: sin alertas médicas ni notas internas.
+type CitaPortal struct {
+	ID                  int       `json:"id"`
+	Estado              string    `json:"estado"`
+	Inicio              time.Time `json:"inicio"`
+	Fin                 time.Time `json:"fin"`
+	ProfesionalNombre   string    `json:"profesional_nombre"`
+	ConsultorioNombre   string    `json:"consultorio_nombre"`
+	ProcedimientoNombre string    `json:"procedimiento_nombre"`
+	Motivo              string    `json:"motivo"`
+}
+
 // CambioEstado es una línea del historial de una cita.
 type CambioEstado struct {
 	EstadoAnterior string    `json:"estado_anterior"`

@@ -27,6 +27,7 @@ type Manejadores struct {
 	Consentimientos *controllers.ConsentimientosController
 	Recetas         *controllers.RecetasController
 	Presupuestos    *controllers.PresupuestosController
+	Portal          *controllers.PortalController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -70,6 +71,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarConsentimientos(app, m, autenticado)
 	registrarRecetas(app, m, autenticado)
 	registrarPresupuestos(app, m, autenticado)
+	registrarPortal(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -113,26 +115,28 @@ func registrarPacientes(app *fiber.App, m Manejadores, autenticado fiber.Handler
 // (las listas alimentan los selectores de los demás módulos) y solo el administrador TI modifica.
 func registrarCatalogo(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
 	admin := middleware.RequireRoles(models.RolAdminTI)
+	// Las listas del catálogo son para el personal: el paciente del portal no las necesita.
+	personal := middleware.RequireRoles(models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor)
 	cat := m.Catalogo
 
-	app.Get("/api/catalogo/:recurso", autenticado, cat.ListarSimples)
+	app.Get("/api/catalogo/:recurso", autenticado, personal, cat.ListarSimples)
 	app.Post("/api/catalogo/:recurso", autenticado, admin, cat.CrearSimple)
 	app.Put("/api/catalogo/:recurso/:id", autenticado, admin, cat.ActualizarSimple)
 
-	app.Get("/api/sillones", autenticado, cat.ListarSillones)
+	app.Get("/api/sillones", autenticado, personal, cat.ListarSillones)
 	app.Post("/api/sillones", autenticado, admin, cat.CrearSillon)
 	app.Put("/api/sillones/:id", autenticado, admin, cat.ActualizarSillon)
 
-	app.Get("/api/profesionales", autenticado, cat.ListarProfesionales)
+	app.Get("/api/profesionales", autenticado, personal, cat.ListarProfesionales)
 	app.Get("/api/profesionales/candidatos", autenticado, admin, cat.ListarUsuariosOdontologos)
 	app.Post("/api/profesionales", autenticado, admin, cat.CrearProfesional)
 	app.Put("/api/profesionales/:id", autenticado, admin, cat.ActualizarProfesional)
 
-	app.Get("/api/procedimientos", autenticado, cat.ListarProcedimientos)
+	app.Get("/api/procedimientos", autenticado, personal, cat.ListarProcedimientos)
 	app.Post("/api/procedimientos", autenticado, admin, cat.CrearProcedimiento)
 	app.Put("/api/procedimientos/:id", autenticado, admin, cat.ActualizarProcedimiento)
 
-	app.Get("/api/parametros", autenticado, cat.ListarParametros)
+	app.Get("/api/parametros", autenticado, personal, cat.ListarParametros)
 	app.Put("/api/parametros/:clave", autenticado, admin, cat.ActualizarParametro)
 }
 
@@ -289,4 +293,23 @@ func registrarPresupuestos(app *fiber.App, m Manejadores, autenticado fiber.Hand
 	app.Post(base+"/:pid/nueva-version", autenticado, odontologo, auditar(m, models.AccionCreacion, "presupuesto", paciente), pre.NuevaVersion)
 	app.Get(base+"/:pid/pdf", autenticado, lectura, auditar(m, models.AccionExportacion, "presupuesto", paciente, entidad), pre.PDFPresupuesto)
 	app.Get("/api/pacientes/:id/tareas", autenticado, lectura, auditar(m, models.AccionConsulta, "tareas", paciente), pre.ListarTareas)
+}
+
+// registrarPortal declara las rutas del portal del paciente (F2-8). El ingreso es público (documento y código OTP, con
+// espera entre códigos); lo demás exige el rol paciente, y el paciente se deduce siempre del token.
+func registrarPortal(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	paciente := middleware.RequireRoles(models.RolPaciente)
+	por := m.Portal
+
+	app.Post("/api/portal/codigo", por.SolicitarCodigo)
+	app.Post("/api/portal/ingresar", por.Ingresar)
+
+	app.Get("/api/portal/yo", autenticado, paciente, por.Perfil)
+	app.Get("/api/portal/citas", autenticado, paciente, auditar(m, models.AccionConsulta, "portal_citas"), por.ListarCitas)
+	app.Post("/api/portal/citas/:id/confirmar", autenticado, paciente, auditar(m, models.AccionModificacion, "cita"), por.ConfirmarCita)
+	app.Post("/api/portal/citas/:id/cancelar", autenticado, paciente, auditar(m, models.AccionModificacion, "cita"), por.CancelarCita)
+	app.Get("/api/portal/recetas", autenticado, paciente, auditar(m, models.AccionConsulta, "portal_recetas"), por.ListarRecetas)
+	app.Get("/api/portal/recetas/:id/pdf", autenticado, paciente, auditar(m, models.AccionExportacion, "receta"), por.PDFReceta)
+	app.Get("/api/portal/consentimientos", autenticado, paciente, auditar(m, models.AccionConsulta, "portal_consentimientos"), por.ListarConsentimientos)
+	app.Get("/api/portal/consentimientos/:id/pdf", autenticado, paciente, auditar(m, models.AccionExportacion, "archivo"), por.PDFConsentimiento)
 }

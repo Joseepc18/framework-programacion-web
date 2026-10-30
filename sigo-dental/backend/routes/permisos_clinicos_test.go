@@ -70,6 +70,19 @@ var permisosClinicos = []permisoRuta{
 	{"POST", "/api/pacientes/1/presupuestos/1/nueva-version", soloOdontologo},
 	{"GET", "/api/pacientes/1/presupuestos/1/pdf", []string{models.RolOdontologo, models.RolRecepcionista}},
 	{"GET", "/api/pacientes/1/tareas", []string{models.RolOdontologo, models.RolRecepcionista}},
+	// F2-8: el portal es solo del paciente; ningún rol del personal entra a sus rutas.
+	{"GET", "/api/portal/yo", []string{models.RolPaciente}},
+	{"GET", "/api/portal/citas", []string{models.RolPaciente}},
+	{"POST", "/api/portal/citas/1/confirmar", []string{models.RolPaciente}},
+	{"POST", "/api/portal/citas/1/cancelar", []string{models.RolPaciente}},
+	{"GET", "/api/portal/recetas", []string{models.RolPaciente}},
+	{"GET", "/api/portal/recetas/1/pdf", []string{models.RolPaciente}},
+	{"GET", "/api/portal/consentimientos", []string{models.RolPaciente}},
+	{"GET", "/api/portal/consentimientos/1/pdf", []string{models.RolPaciente}},
+	// El paciente no entra a las listas del catálogo: son para el personal.
+	{"GET", "/api/catalogo/consultorios", []string{models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor}},
+	{"GET", "/api/profesionales", []string{models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor}},
+	{"GET", "/api/parametros", []string{models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor}},
 	// F2-2: el odontólogo escribe el odontograma; el asistente solo lo consulta.
 	{"GET", "/api/pacientes/1/odontograma", rolesClinicos},
 	{"GET", "/api/pacientes/1/odontograma/historial", rolesClinicos},
@@ -80,7 +93,7 @@ var permisosClinicos = []permisoRuta{
 
 func TestPermisosDeLosModulosClinicos(t *testing.T) {
 	app := appDePrueba(t)
-	roles := []string{models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor}
+	roles := []string{models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor, models.RolPaciente}
 	for _, p := range permisosClinicos {
 		for _, rol := range roles {
 			if slices.Contains(p.roles, rol) {

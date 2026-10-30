@@ -315,27 +315,22 @@ func (ctrl *RecetasController) AnularReceta(c *fiber.Ctx) error {
 	return c.JSON(respuesta)
 }
 
-// PDFReceta responde GET /api/pacientes/:id/recetas/:rid/pdf: la receta con el encabezado de la clínica. Un borrador o
-// una receta anulada se identifican como tales en el documento.
-func (ctrl *RecetasController) PDFReceta(c *fiber.Ctx) error {
-	pacienteID, recetaID, ok := idsDeReceta(c)
-	if !ok {
-		return errorCliente(c, fiber.StatusBadRequest, "Identificador inválido")
-	}
-	receta, err := ctrl.repo.ObtenerReceta(c.Context(), pacienteID, recetaID)
+// GenerarPDF arma el PDF de la receta del paciente; lo usan la vista del personal y el portal del paciente.
+func (ctrl *RecetasController) GenerarPDF(ctx context.Context, pacienteID, recetaID int) ([]byte, models.Receta, error) {
+	receta, err := ctrl.repo.ObtenerReceta(ctx, pacienteID, recetaID)
 	if err != nil {
-		return errorDominio(c, err)
+		return nil, receta, err
 	}
-	paciente, err := ctrl.repo.ObtenerPaciente(c.Context(), pacienteID)
+	paciente, err := ctrl.repo.ObtenerPaciente(ctx, pacienteID)
 	if err != nil {
-		return errorDominio(c, err)
+		return nil, receta, err
 	}
-	zona, errZona := time.LoadLocation(parametroTexto(c.Context(), ctrl.repo, "zona_horaria", "America/Guayaquil"))
+	zona, errZona := time.LoadLocation(parametroTexto(ctx, ctrl.repo, "zona_horaria", "America/Guayaquil"))
 	if errZona != nil {
 		zona = time.UTC
 	}
 	datos := documentos.DatosRecetaPDF{
-		Clinica: clinicaDe(c.Context(), ctrl.repo), Receta: ctrl.presentar(c.Context(), receta),
+		Clinica: clinicaDe(ctx, ctrl.repo), Receta: ctrl.presentar(ctx, receta),
 		Paciente: nombreCompleto(paciente.Nombres, paciente.Apellidos), Documento: paciente.Documento,
 		Fecha: receta.CreadaEn.In(zona).Format("02/01/2006 15:04"),
 	}
@@ -343,12 +338,31 @@ func (ctrl *RecetasController) PDFReceta(c *fiber.Ctx) error {
 		datos.Firmada = receta.Firma.FirmadoEn.In(zona).Format("02/01/2006 15:04:05")
 	}
 	contenido, err := documentos.RecetaPDF(datos)
+	return contenido, receta, err
+}
+
+// enviarPDF responde con el PDF sin guardarlo en cachés compartidas.
+func enviarPDF(c *fiber.Ctx, nombre string, contenido []byte) error {
+	c.Set(fiber.HeaderContentType, "application/pdf")
+	c.Set(fiber.HeaderContentDisposition, fmt.Sprintf(`inline; filename="%s"`, nombre))
+	c.Set(fiber.HeaderCacheControl, "private, no-store")
+	return c.Send(contenido)
+}
+
+// PDFReceta responde GET /api/pacientes/:id/recetas/:rid/pdf: la receta con el encabezado de la clínica. Un borrador o
+// una receta anulada se identifican como tales en el documento.
+func (ctrl *RecetasController) PDFReceta(c *fiber.Ctx) error {
+	pacienteID, recetaID, ok := idsDeReceta(c)
+	if !ok {
+		return errorCliente(c, fiber.StatusBadRequest, "Identificador inválido")
+	}
+	contenido, receta, err := ctrl.GenerarPDF(c.Context(), pacienteID, recetaID)
+	if errors.Is(err, models.ErrNoEncontrado) {
+		return errorDominio(c, err)
+	}
 	if err != nil {
 		return errorInterno(c, err)
 	}
 	middleware.MarcarAuditoria(c, pacienteID, recetaID)
-	c.Set(fiber.HeaderContentType, "application/pdf")
-	c.Set(fiber.HeaderContentDisposition, fmt.Sprintf(`inline; filename="receta-%s.pdf"`, receta.Numero))
-	c.Set(fiber.HeaderCacheControl, "private, no-store")
-	return c.Send(contenido)
+	return enviarPDF(c, "receta-"+receta.Numero+".pdf", contenido)
 }

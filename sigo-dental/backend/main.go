@@ -87,6 +87,8 @@ func main() {
 	// Códigos de un solo uso (consentimientos y portal del paciente).
 	codigosOTP := otp.NuevoServicio(repositorio, secretoJWT)
 
+	recetas := controllers.NuevoRecetasController(repositorio, firmaDigital)
+
 	manejadores := routes.Manejadores{
 		Health:          controllers.NuevoHealthController(repositorio, almacen),
 		Auth:            auth,
@@ -100,8 +102,9 @@ func main() {
 		Periodonto:      controllers.NuevoPeriodontoController(repositorio),
 		Evolucion:       controllers.NuevoEvolucionController(repositorio, firmaDigital),
 		Consentimientos: controllers.NuevoConsentimientosController(repositorio, codigosOTP, avisos, archivos),
-		Recetas:         controllers.NuevoRecetasController(repositorio, firmaDigital),
+		Recetas:         recetas,
 		Presupuestos:    controllers.NuevoPresupuestosController(repositorio),
+		Portal:          controllers.NuevoPortalController(repositorio, recetas, codigosOTP, avisos, almacenArchivos, secretoJWT),
 		Auditor:         repositorio,
 		JWTSecret:       secretoJWT,
 	}
