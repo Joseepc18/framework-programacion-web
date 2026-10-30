@@ -13,6 +13,8 @@ export interface AuthContextType {
   usuario: Usuario | null;
   aviso: AvisoSesion | null;
   iniciarSesion: (email: string, password: string) => Promise<void>;
+  // Abre la sesión con un token que ya se obtuvo por otro camino (ingreso al portal con código OTP).
+  establecerSesion: (sesion: { token: string; email: string; rol: Rol }) => void;
   cerrarSesion: () => void;
   descartarAviso: () => void;
 }

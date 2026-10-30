@@ -68,3 +68,6 @@ type Parametro struct {
 	Valor       string `json:"valor"`
 	Descripcion string `json:"descripcion"`
 }
+
+// ErrInmutable: el registro es clínico o de auditoría y ya no admite cambios (RN-01, RNF-06).
+var ErrInmutable = errors.New("registro inmutable")

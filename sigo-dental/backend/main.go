@@ -17,10 +17,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// CORS gestiona la seguridad entre distintos puertos y dominios.
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"sigo-dental-backend/almacenamiento"
 	"sigo-dental-backend/cache"
 	"sigo-dental-backend/config"
 	"sigo-dental-backend/controllers"
+	"sigo-dental-backend/firma"
+	"sigo-dental-backend/middleware"
 	"sigo-dental-backend/notificaciones"
+	"sigo-dental-backend/otp"
 	"sigo-dental-backend/repository"
 	"sigo-dental-backend/routes"
 )
@@ -65,19 +69,48 @@ func main() {
 	if urlFrontend == "" {
 		urlFrontend = "http://localhost:5173"
 	}
-	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend)
+	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend).ConCodigos(repositorio)
+
+	// Archivos del paciente (F2-1): disco en desarrollo, S3 en producción (ALMACEN_ARCHIVOS).
+	almacenArchivos, err := almacenamiento.NuevoDesdeEntorno()
+	if err != nil {
+		log.Fatal(err)
+	}
+	archivos := almacenamiento.NuevoServicio(almacenArchivos, repositorio)
+
+	// La auditoría anota la IP del cliente; detrás de un proxy de confianza se toma de PROXY_HEADER (RNF-06).
+	saltosProxy, _ := strconv.Atoi(os.Getenv("PROXY_SALTOS"))
+	middleware.ConfigurarIPDeProxy(os.Getenv("PROXY_HEADER"), saltosProxy)
+
+	// Firma digital de notas, adendas, recetas y consentimientos (reautenticación con la contraseña).
+	firmaDigital := firma.NuevoServicio(repositorio)
+	// Códigos de un solo uso (consentimientos y portal del paciente).
+	codigosOTP := otp.NuevoServicio(repositorio, secretoJWT)
+
+	recetas := controllers.NuevoRecetasController(repositorio, firmaDigital)
 
 	manejadores := routes.Manejadores{
-		Health:    controllers.NuevoHealthController(repositorio, almacen),
-		Auth:      auth,
-		Catalogo:  controllers.NuevoCatalogoController(repositorio),
-		Pacientes: controllers.NuevoPacientesController(repositorio),
-		Citas:     controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
-		Cobros:    controllers.NuevoCobrosController(repositorio),
-		JWTSecret: secretoJWT,
+		Health:          controllers.NuevoHealthController(repositorio, almacen),
+		Auth:            auth,
+		Catalogo:        controllers.NuevoCatalogoController(repositorio),
+		Pacientes:       controllers.NuevoPacientesController(repositorio),
+		Citas:           controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
+		Cobros:          controllers.NuevoCobrosController(repositorio),
+		Expediente:      controllers.NuevoExpedienteController(repositorio, archivos),
+		Auditoria:       controllers.NuevoAuditoriaController(repositorio),
+		Odontograma:     controllers.NuevoOdontogramaController(repositorio),
+		Periodonto:      controllers.NuevoPeriodontoController(repositorio),
+		Evolucion:       controllers.NuevoEvolucionController(repositorio, firmaDigital),
+		Consentimientos: controllers.NuevoConsentimientosController(repositorio, codigosOTP, avisos, archivos),
+		Recetas:         recetas,
+		Presupuestos:    controllers.NuevoPresupuestosController(repositorio),
+		Portal:          controllers.NuevoPortalController(repositorio, recetas, codigosOTP, avisos, almacenArchivos, secretoJWT),
+		Auditor:         repositorio,
+		JWTSecret:       secretoJWT,
 	}
 
-	app := fiber.New()
+	// El límite del cuerpo (16 MB) deja subir archivos de hasta 15 MB; Fiber trae 4 MB por defecto.
+	app := fiber.New(fiber.Config{BodyLimit: 16 * 1024 * 1024})
 	origenes := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if origenes == "" {
 		origenes = "http://localhost:5173,http://127.0.0.1:5173"

@@ -18,6 +18,8 @@ const (
 	pgExclusion  = "23P01"
 	pgNoNulo     = "23502"
 	pgTextoLargo = "22001"
+	// pgInmutable lo lanzan los disparadores que protegen los registros clínicos y de auditoría (migración 007).
+	pgInmutable = "SG001"
 )
 
 // traducirError convierte las violaciones de restricciones de PostgreSQL en errores de dominio,
@@ -30,6 +32,8 @@ func traducirError(err error) error {
 	switch pgErr.Code {
 	case pgUnicidad:
 		return models.ErrDuplicado
+	case pgInmutable:
+		return models.ErrInmutable
 	case pgExclusion:
 		return models.ErrConflicto
 	case pgForanea, pgCheck, pgNoNulo, pgTextoLargo:

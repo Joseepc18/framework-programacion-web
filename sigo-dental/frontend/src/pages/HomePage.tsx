@@ -1,10 +1,12 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { AREAS, ETIQUETA_ROL, rutaDeArea } from '../config/permisos';
 import { useAuth } from '../context/useAuth';
 
 const HomePage = () => {
   const { usuario } = useAuth();
   const area = AREAS.find((a) => a.rol === usuario?.rol);
+  // El paciente no tiene panel de inicio del personal: va directo a su portal.
+  if (usuario?.rol === 'paciente') return <Navigate to="/portal" replace />;
 
   return (
     <section aria-labelledby="titulo-inicio">

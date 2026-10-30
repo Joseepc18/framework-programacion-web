@@ -1,2 +1,5 @@
 # Variables de entorno locales (credenciales)
 .env
+
+# Archivos de pacientes del adaptador de disco (solo desarrollo)
+datos/

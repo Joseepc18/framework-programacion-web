@@ -74,6 +74,26 @@
   --color-cita-no-asistio-borde: rgba(251, 113, 133, 0.4);
   --color-cita-no-asistio-texto: #ffd1d8;
 
+/* Hallazgos del odontograma (docs/diseno.md). La restauración va en azul, como pide RF-03; el color nunca es el único
+     indicador: cada tipo tiene además su leyenda, su forma y su texto. */
+  --color-odonto-sano: rgba(255, 255, 255, 0.92);
+  --color-odonto-sano-borde: rgba(255, 255, 255, 0.95);
+  --color-odonto-caries: #fb7185;
+  --color-odonto-caries-borde: #fda4af;
+  --color-odonto-restauracion: #60a5fa;
+  --color-odonto-restauracion-borde: #bfdbfe;
+  --color-odonto-endodoncia: #fbbf24;
+  --color-odonto-endodoncia-borde: #fde68a;
+  --color-odonto-sellante: #2dd4bf;
+  --color-odonto-sellante-borde: #5eead4;
+  --color-odonto-implante: #a78bfa;
+  --color-odonto-implante-borde: #ddd6fe;
+  --color-odonto-protesis-fija: #c4b5fd;
+  --color-odonto-protesis-removible: #f9a8d4;
+  --color-odonto-exodoncia: #fb7185;
+  --color-odonto-ausente-borde: rgba(255, 255, 255, 0.4);
+  --color-odonto-seleccion: #2dd4bf;
+
   --color-mancha-turquesa: #14b8a6;
   --color-mancha-violeta: #7c3aed;
 }

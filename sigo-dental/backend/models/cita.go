@@ -47,6 +47,8 @@ type DatosCita struct {
 	Notas           string    `json:"notas"`
 	Inicio          time.Time `json:"inicio"`
 	Fin             time.Time `json:"fin"`
+	// PresupuestoItemID liga la cita a una tarea aprobada de un presupuesto (RF-08); solo al agendar.
+	PresupuestoItemID *int `json:"presupuesto_item_id"`
 }
 
 // Cita es una cita con los nombres de lo que referencia, lista para pintar en el calendario.
@@ -69,6 +71,18 @@ type Cita struct {
 	Notas               string    `json:"notas"`
 	Inicio              time.Time `json:"inicio"`
 	Fin                 time.Time `json:"fin"`
+}
+
+// CitaPortal es la cita tal como la ve el paciente en su portal: sin alertas médicas ni notas internas.
+type CitaPortal struct {
+	ID                  int       `json:"id"`
+	Estado              string    `json:"estado"`
+	Inicio              time.Time `json:"inicio"`
+	Fin                 time.Time `json:"fin"`
+	ProfesionalNombre   string    `json:"profesional_nombre"`
+	ConsultorioNombre   string    `json:"consultorio_nombre"`
+	ProcedimientoNombre string    `json:"procedimiento_nombre"`
+	Motivo              string    `json:"motivo"`
 }
 
 // CambioEstado es una línea del historial de una cita.

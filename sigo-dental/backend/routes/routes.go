@@ -17,6 +17,19 @@ type Manejadores struct {
 	Pacientes *controllers.PacientesController
 	Citas     *controllers.CitasController
 	Cobros    *controllers.CobrosController
+	// Expediente (F2-1): signos vitales, archivos y consulta de la auditoría.
+	Expediente *controllers.ExpedienteController
+	Auditoria  *controllers.AuditoriaController
+	// Módulos clínicos de la Fase 2.
+	Odontograma     *controllers.OdontogramaController
+	Periodonto      *controllers.PeriodontoController
+	Evolucion       *controllers.EvolucionController
+	Consentimientos *controllers.ConsentimientosController
+	Recetas         *controllers.RecetasController
+	Presupuestos    *controllers.PresupuestosController
+	Portal          *controllers.PortalController
+	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
+	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
 	JWTSecret []byte
 }
@@ -51,6 +64,14 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarPacientes(app, m, autenticado)
 	registrarCitas(app, m, autenticado)
 	registrarCobros(app, m, autenticado)
+	registrarExpediente(app, m, autenticado)
+	registrarOdontograma(app, m, autenticado)
+	registrarPeriodonto(app, m, autenticado)
+	registrarEvolucion(app, m, autenticado)
+	registrarConsentimientos(app, m, autenticado)
+	registrarRecetas(app, m, autenticado)
+	registrarPresupuestos(app, m, autenticado)
+	registrarPortal(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -82,37 +103,40 @@ func registrarPacientes(app *fiber.App, m Manejadores, autenticado fiber.Handler
 	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
 	pac := m.Pacientes
 
-	app.Get("/api/pacientes", autenticado, consulta, pac.ListarPacientes)
-	app.Get("/api/pacientes/:id", autenticado, consulta, pac.ObtenerPaciente)
-	app.Post("/api/pacientes", autenticado, recepcion, pac.CrearPaciente)
-	app.Put("/api/pacientes/:id", autenticado, recepcion, pac.ActualizarPaciente)
-	app.Put("/api/pacientes/:id/anamnesis", autenticado, clinico, pac.ActualizarAnamnesis)
+	paciente, entidadPaciente := middleware.PacienteDeRuta("id"), middleware.EntidadDeRuta("id")
+	app.Get("/api/pacientes", autenticado, consulta, auditar(m, models.AccionConsulta, "pacientes"), pac.ListarPacientes)
+	app.Get("/api/pacientes/:id", autenticado, consulta, auditar(m, models.AccionConsulta, "paciente", paciente, entidadPaciente), pac.ObtenerPaciente)
+	app.Post("/api/pacientes", autenticado, recepcion, auditar(m, models.AccionCreacion, "paciente"), pac.CrearPaciente)
+	app.Put("/api/pacientes/:id", autenticado, recepcion, auditar(m, models.AccionModificacion, "paciente", paciente, entidadPaciente), pac.ActualizarPaciente)
+	app.Put("/api/pacientes/:id/anamnesis", autenticado, clinico, auditar(m, models.AccionModificacion, "anamnesis", paciente), pac.ActualizarAnamnesis)
 }
 
 // registrarCatalogo declara las rutas del catálogo médico: cualquier cuenta con sesión consulta
 // (las listas alimentan los selectores de los demás módulos) y solo el administrador TI modifica.
 func registrarCatalogo(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
 	admin := middleware.RequireRoles(models.RolAdminTI)
+	// Las listas del catálogo son para el personal: el paciente del portal no las necesita.
+	personal := middleware.RequireRoles(models.RolAdminTI, models.RolRecepcionista, models.RolOdontologo, models.RolAsistente, models.RolAuditor)
 	cat := m.Catalogo
 
-	app.Get("/api/catalogo/:recurso", autenticado, cat.ListarSimples)
+	app.Get("/api/catalogo/:recurso", autenticado, personal, cat.ListarSimples)
 	app.Post("/api/catalogo/:recurso", autenticado, admin, cat.CrearSimple)
 	app.Put("/api/catalogo/:recurso/:id", autenticado, admin, cat.ActualizarSimple)
 
-	app.Get("/api/sillones", autenticado, cat.ListarSillones)
+	app.Get("/api/sillones", autenticado, personal, cat.ListarSillones)
 	app.Post("/api/sillones", autenticado, admin, cat.CrearSillon)
 	app.Put("/api/sillones/:id", autenticado, admin, cat.ActualizarSillon)
 
-	app.Get("/api/profesionales", autenticado, cat.ListarProfesionales)
+	app.Get("/api/profesionales", autenticado, personal, cat.ListarProfesionales)
 	app.Get("/api/profesionales/candidatos", autenticado, admin, cat.ListarUsuariosOdontologos)
 	app.Post("/api/profesionales", autenticado, admin, cat.CrearProfesional)
 	app.Put("/api/profesionales/:id", autenticado, admin, cat.ActualizarProfesional)
 
-	app.Get("/api/procedimientos", autenticado, cat.ListarProcedimientos)
+	app.Get("/api/procedimientos", autenticado, personal, cat.ListarProcedimientos)
 	app.Post("/api/procedimientos", autenticado, admin, cat.CrearProcedimiento)
 	app.Put("/api/procedimientos/:id", autenticado, admin, cat.ActualizarProcedimiento)
 
-	app.Get("/api/parametros", autenticado, cat.ListarParametros)
+	app.Get("/api/parametros", autenticado, personal, cat.ListarParametros)
 	app.Put("/api/parametros/:clave", autenticado, admin, cat.ActualizarParametro)
 }
 
@@ -128,4 +152,164 @@ func registrarCobros(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
 	app.Post("/api/cobros", autenticado, recepcion, cob.CrearCobro)
 	app.Post("/api/cobros/:id/pagos", autenticado, recepcion, cob.RegistrarPago)
 	app.Post("/api/cobros/:id/anular", autenticado, recepcion, cob.AnularCobro)
+}
+
+// auditar devuelve el middleware que registra el acceso en la bitácora (RNF-06), o uno que no hace nada si no hay auditor.
+func auditar(m Manejadores, accion, entidad string, opciones ...middleware.OpcionAuditoria) fiber.Handler {
+	if m.Auditor == nil {
+		return func(c *fiber.Ctx) error { return c.Next() }
+	}
+	return middleware.Auditar(m.Auditor, accion, entidad, opciones...)
+}
+
+// registrarExpediente declara las rutas de signos vitales, archivos y auditoría. El personal clínico (odontólogo y
+// asistente) registra y consulta; el administrador TI y el auditor leen la bitácora, que nadie puede modificar.
+func registrarExpediente(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	lectorAuditoria := middleware.RequireRoles(models.RolAdminTI, models.RolAuditor)
+	exp, aud := m.Expediente, m.Auditoria
+	paciente := middleware.PacienteDeRuta("id")
+
+	app.Get("/api/pacientes/:id/signos-vitales", autenticado, clinico, auditar(m, models.AccionConsulta, "signos_vitales", paciente), exp.ListarSignosVitales)
+	app.Post("/api/pacientes/:id/signos-vitales", autenticado, clinico, auditar(m, models.AccionCreacion, "signos_vitales", paciente), exp.RegistrarSignosVitales)
+	app.Get("/api/pacientes/:id/archivos", autenticado, clinico, auditar(m, models.AccionConsulta, "archivos", paciente), exp.ListarArchivos)
+	app.Post("/api/pacientes/:id/archivos", autenticado, clinico, auditar(m, models.AccionCreacion, "archivo", paciente), exp.SubirArchivo)
+	// El paciente de una descarga se conoce al leer los metadatos: el controlador lo anota para la auditoría.
+	app.Get("/api/archivos/:id/descargar", autenticado, clinico, auditar(m, models.AccionExportacion, "archivo", middleware.EntidadDeRuta("id")), exp.DescargarArchivo)
+
+	app.Get("/api/auditoria", autenticado, lectorAuditoria, auditar(m, models.AccionConsulta, "auditoria"), aud.ListarAuditoria)
+}
+
+// registrarOdontograma declara las rutas del odontograma (F2-2): el odontólogo registra, corrige y retira hallazgos;
+// el asistente solo consulta.
+func registrarOdontograma(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	lectura := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	escritura := middleware.RequireRoles(models.RolOdontologo)
+	odo := m.Odontograma
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/odontograma"
+
+	app.Get(base, autenticado, lectura, auditar(m, models.AccionConsulta, "odontograma", paciente), odo.ObtenerOdontograma)
+	app.Get(base+"/historial", autenticado, lectura, auditar(m, models.AccionConsulta, "odontograma_historial", paciente), odo.HistorialOdontograma)
+	app.Post(base+"/hallazgos", autenticado, escritura, auditar(m, models.AccionCreacion, "hallazgo", paciente), odo.RegistrarHallazgo)
+	app.Put(base+"/hallazgos/:hid", autenticado, escritura, auditar(m, models.AccionModificacion, "hallazgo", paciente), odo.CorregirHallazgo)
+	app.Post(base+"/hallazgos/:hid/retirar", autenticado, escritura, auditar(m, models.AccionModificacion, "hallazgo", paciente, middleware.EntidadDeRuta("hid")), odo.RetirarHallazgo)
+}
+
+// registrarPeriodonto declara las rutas del periodontograma (F2-3): el personal clínico captura y consulta.
+func registrarPeriodonto(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	per := m.Periodonto
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/periodontogramas"
+
+	app.Get(base, autenticado, clinico, auditar(m, models.AccionConsulta, "periodontogramas", paciente), per.ListarPeriodontogramas)
+	app.Get(base+"/:eid", autenticado, clinico, auditar(m, models.AccionConsulta, "periodontograma", paciente, middleware.EntidadDeRuta("eid")), per.ObtenerPeriodontograma)
+	app.Post(base, autenticado, clinico, auditar(m, models.AccionCreacion, "periodontograma", paciente), per.CrearPeriodontograma)
+}
+
+// registrarEvolucion declara las rutas de la evolución clínica (F2-4): el odontólogo y el asistente redactan notas y
+// consultan; solo el odontólogo firma, corrige con adendas y completa procedimientos.
+func registrarEvolucion(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	evo := m.Evolucion
+	paciente := middleware.PacienteDeRuta("id")
+	notas := "/api/pacientes/:id/notas"
+	procs := "/api/pacientes/:id/procedimientos-realizados"
+
+	app.Get(notas, autenticado, clinico, auditar(m, models.AccionConsulta, "notas", paciente), evo.ListarNotas)
+	app.Post(notas, autenticado, clinico, auditar(m, models.AccionCreacion, "nota", paciente), evo.CrearNota)
+	app.Put(notas+"/:nid", autenticado, clinico, auditar(m, models.AccionModificacion, "nota", paciente, middleware.EntidadDeRuta("nid")), evo.ActualizarNota)
+	app.Post(notas+"/:nid/firmar", autenticado, odontologo, auditar(m, models.AccionFirma, "nota", paciente, middleware.EntidadDeRuta("nid")), evo.FirmarNota)
+	app.Post("/api/pacientes/:id/adendas", autenticado, odontologo, auditar(m, models.AccionFirma, "adenda", paciente), evo.CrearAdenda)
+
+	app.Get(procs, autenticado, clinico, auditar(m, models.AccionConsulta, "procedimientos_realizados", paciente), evo.ListarProcedimientosRealizados)
+	app.Post(procs, autenticado, odontologo, auditar(m, models.AccionCreacion, "procedimiento_realizado", paciente), evo.IniciarProcedimiento)
+	app.Post(procs+"/:pid/completar", autenticado, odontologo, auditar(m, models.AccionModificacion, "procedimiento_realizado", paciente, middleware.EntidadDeRuta("pid")), evo.CompletarProcedimiento)
+	app.Post(procs+"/:pid/cancelar", autenticado, odontologo, auditar(m, models.AccionModificacion, "procedimiento_realizado", paciente, middleware.EntidadDeRuta("pid")), evo.CancelarProcedimiento)
+}
+
+// registrarConsentimientos declara las rutas del consentimiento informado (F2-5): el odontólogo prepara y revoca; el
+// odontólogo y el asistente recogen la firma; el administrador TI mantiene las plantillas.
+func registrarConsentimientos(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	admin := middleware.RequireRoles(models.RolAdminTI)
+	leePlantillas := middleware.RequireRoles(models.RolOdontologo, models.RolAdminTI)
+	con := m.Consentimientos
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/consentimientos"
+	entidad := middleware.EntidadDeRuta("cid")
+
+	app.Get("/api/consentimiento-plantillas", autenticado, leePlantillas, con.ListarPlantillas)
+	app.Post("/api/consentimiento-plantillas", autenticado, admin, con.CrearPlantilla)
+	app.Put("/api/consentimiento-plantillas/:id", autenticado, admin, con.ActualizarPlantilla)
+
+	app.Get(base, autenticado, clinico, auditar(m, models.AccionConsulta, "consentimientos", paciente), con.ListarConsentimientos)
+	app.Post(base, autenticado, odontologo, auditar(m, models.AccionCreacion, "consentimiento", paciente), con.CrearConsentimiento)
+	app.Post(base+"/:cid/otp", autenticado, clinico, auditar(m, models.AccionModificacion, "consentimiento_otp", paciente, entidad), con.EnviarCodigo)
+	app.Post(base+"/:cid/firmar", autenticado, clinico, auditar(m, models.AccionFirma, "consentimiento", paciente, entidad), con.FirmarConsentimiento)
+	app.Post(base+"/:cid/revocar", autenticado, odontologo, auditar(m, models.AccionCreacion, "consentimiento", paciente), con.RevocarConsentimiento)
+	// Bitácora de códigos enviados (con el adaptador simulado el código es visible para probar).
+	app.Get("/api/pacientes/:id/notificaciones", autenticado, middleware.RequireRoles(models.RolOdontologo, models.RolAsistente, models.RolRecepcionista),
+		auditar(m, models.AccionConsulta, "notificaciones", paciente), con.ListarNotificaciones)
+}
+
+// registrarRecetas declara las rutas de recetas (F2-6): solo el odontólogo emite, firma y anula; el asistente consulta.
+func registrarRecetas(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	lectura := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	rec := m.Recetas
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/recetas"
+	entidad := middleware.EntidadDeRuta("rid")
+
+	app.Get(base, autenticado, lectura, auditar(m, models.AccionConsulta, "recetas", paciente), rec.ListarRecetas)
+	app.Post(base+"/verificar-alergias", autenticado, odontologo, rec.VerificarAlergias)
+	app.Post(base, autenticado, odontologo, auditar(m, models.AccionCreacion, "receta", paciente), rec.CrearReceta)
+	app.Get(base+"/:rid", autenticado, lectura, auditar(m, models.AccionConsulta, "receta", paciente, entidad), rec.ObtenerReceta)
+	app.Put(base+"/:rid", autenticado, odontologo, auditar(m, models.AccionModificacion, "receta", paciente, entidad), rec.ActualizarReceta)
+	app.Post(base+"/:rid/firmar", autenticado, odontologo, auditar(m, models.AccionFirma, "receta", paciente, entidad), rec.FirmarReceta)
+	app.Post(base+"/:rid/anular", autenticado, odontologo, auditar(m, models.AccionAnulacion, "receta", paciente, entidad), rec.AnularReceta)
+	app.Get(base+"/:rid/pdf", autenticado, lectura, auditar(m, models.AccionExportacion, "receta", paciente, entidad), rec.PDFReceta)
+}
+
+// registrarPresupuestos declara las rutas de presupuestos y tareas agendables (F2-7): el odontólogo arma el plan y crea
+// versiones nuevas; la recepción y el odontólogo consultan, presentan y registran la aprobación.
+func registrarPresupuestos(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	lectura := middleware.RequireRoles(models.RolOdontologo, models.RolRecepcionista)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	pre := m.Presupuestos
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/presupuestos"
+	entidad := middleware.EntidadDeRuta("pid")
+
+	app.Get(base, autenticado, lectura, auditar(m, models.AccionConsulta, "presupuestos", paciente), pre.ListarPresupuestos)
+	app.Post(base, autenticado, odontologo, auditar(m, models.AccionCreacion, "presupuesto", paciente), pre.CrearPresupuesto)
+	app.Put(base+"/:pid", autenticado, odontologo, auditar(m, models.AccionModificacion, "presupuesto", paciente, entidad), pre.ActualizarPresupuesto)
+	app.Post(base+"/:pid/presentar", autenticado, lectura, auditar(m, models.AccionModificacion, "presupuesto", paciente, entidad), pre.PresentarPresupuesto)
+	app.Post(base+"/:pid/resolver", autenticado, lectura, auditar(m, models.AccionFirma, "presupuesto", paciente, entidad), pre.ResolverPresupuesto)
+	app.Post(base+"/:pid/nueva-version", autenticado, odontologo, auditar(m, models.AccionCreacion, "presupuesto", paciente), pre.NuevaVersion)
+	app.Get(base+"/:pid/pdf", autenticado, lectura, auditar(m, models.AccionExportacion, "presupuesto", paciente, entidad), pre.PDFPresupuesto)
+	app.Get("/api/pacientes/:id/tareas", autenticado, lectura, auditar(m, models.AccionConsulta, "tareas", paciente), pre.ListarTareas)
+}
+
+// registrarPortal declara las rutas del portal del paciente (F2-8). El ingreso es público (documento y código OTP, con
+// espera entre códigos); lo demás exige el rol paciente, y el paciente se deduce siempre del token.
+func registrarPortal(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	paciente := middleware.RequireRoles(models.RolPaciente)
+	por := m.Portal
+
+	app.Post("/api/portal/codigo", por.SolicitarCodigo)
+	app.Post("/api/portal/ingresar", por.Ingresar)
+
+	app.Get("/api/portal/yo", autenticado, paciente, por.Perfil)
+	app.Get("/api/portal/citas", autenticado, paciente, auditar(m, models.AccionConsulta, "portal_citas"), por.ListarCitas)
+	app.Post("/api/portal/citas/:id/confirmar", autenticado, paciente, auditar(m, models.AccionModificacion, "cita"), por.ConfirmarCita)
+	app.Post("/api/portal/citas/:id/cancelar", autenticado, paciente, auditar(m, models.AccionModificacion, "cita"), por.CancelarCita)
+	app.Get("/api/portal/recetas", autenticado, paciente, auditar(m, models.AccionConsulta, "portal_recetas"), por.ListarRecetas)
+	app.Get("/api/portal/recetas/:id/pdf", autenticado, paciente, auditar(m, models.AccionExportacion, "receta"), por.PDFReceta)
+	app.Get("/api/portal/consentimientos", autenticado, paciente, auditar(m, models.AccionConsulta, "portal_consentimientos"), por.ListarConsentimientos)
+	app.Get("/api/portal/consentimientos/:id/pdf", autenticado, paciente, auditar(m, models.AccionExportacion, "archivo"), por.PDFConsentimiento)
 }

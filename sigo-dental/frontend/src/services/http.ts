@@ -17,7 +17,9 @@ export class ApiError extends Error {
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
-export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+// Envía la petición con el Bearer de la sesión y devuelve la respuesta si fue correcta; si no, lanza ApiError.
+// Un 401 con token enviado cierra la sesión. Lo comparten apiFetch (JSON) y apiBlob (archivos).
+async function enviar(endpoint: string, options: RequestInit): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.body && typeof options.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -46,10 +48,19 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
       cuerpo.details ?? cuerpo,
     );
   }
+  return response;
+}
 
+export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const response = await enviar(endpoint, options);
   if (response.status === 204) {
     return {} as T;
   }
-
   return response.json() as Promise<T>;
+}
+
+// Descarga un archivo protegido (PDF, imagen): el navegador no puede enviar el Bearer en un enlace, así que se pide
+// con la sesión y se entrega como Blob.
+export async function apiBlob(endpoint: string): Promise<Blob> {
+  return (await enviar(endpoint, {})).blob();
 }
