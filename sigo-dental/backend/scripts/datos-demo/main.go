@@ -145,8 +145,17 @@ func main() {
 	c := &cliente{base: api, password: password, tokens: map[string]string{}, http: &http.Client{Timeout: 30 * time.Second}}
 	fmt.Println("Datos de demostración de SIGO-Dental →", api)
 
-	if err := c.enviar("", "GET", "/api/health", nil, nil); err != nil {
-		fmt.Println("La API no responde:", err)
+	// Un servidor gratuito que duerme tarda cerca de un minuto en despertar: se insiste antes de rendirse.
+	var errSalud error
+	for intento := 1; intento <= 8; intento++ {
+		if errSalud = c.enviar("", "GET", "/api/health", nil, nil); errSalud == nil {
+			break
+		}
+		fmt.Printf("  esperando a la API (intento %d de 8): %v\n", intento, errSalud)
+		time.Sleep(10 * time.Second)
+	}
+	if errSalud != nil {
+		fmt.Println("La API no responde:", errSalud)
 		os.Exit(1)
 	}
 	d, err := preparar(c)
@@ -154,11 +163,18 @@ func main() {
 		fmt.Println("No se pudo preparar la carga:", err)
 		os.Exit(1)
 	}
-	if os.Getenv("DEMO_FORZAR") != "1" && d.yaCargado(c) {
-		fmt.Println("Ya hay datos de demostración (nota con la marca " + marca + "); no se cargó nada. Usa DEMO_FORZAR=1 para cargar de nuevo.")
-		return
+	forzar := os.Getenv("DEMO_FORZAR") == "1"
+	// Cada bloque tiene su propia marca: el de Carlos y el de Ana se cargan por separado y no se duplican.
+	if forzar || !d.yaCargado(c, d.p(2)) {
+		d.cargar(c)
+	} else {
+		fmt.Println("Ya están los datos de demostración de Carlos (nota con la marca " + marca + "): se omiten.")
 	}
-	d.cargar(c)
+	if forzar || !d.yaCargado(c, d.p(1)) {
+		d.cargarAna(c)
+	} else {
+		fmt.Println("Ya están los datos de demostración de Ana (nota con la marca " + marca + "): se omiten.")
+	}
 
 	var aud struct {
 		Total int `json:"total"`
@@ -245,11 +261,12 @@ func preparar(c *cliente) (*demo, error) {
 
 func (d *demo) p(n int) int { return d.pacientes[fmt.Sprintf("090000000%d", n)] }
 
-func (d *demo) yaCargado(c *cliente) bool {
+// yaCargado indica si el paciente ya tiene una nota de la demostración (la marca del bloque).
+func (d *demo) yaCargado(c *cliente, paciente int) bool {
 	var notas []struct {
 		Subjetivo string `json:"subjetivo"`
 	}
-	if err := c.enviar("odontologo", "GET", fmt.Sprintf("/api/pacientes/%d/notas", d.p(2)), nil, &notas); err != nil {
+	if err := c.enviar("odontologo", "GET", fmt.Sprintf("/api/pacientes/%d/notas", paciente), nil, &notas); err != nil {
 		return false
 	}
 	for _, n := range notas {
