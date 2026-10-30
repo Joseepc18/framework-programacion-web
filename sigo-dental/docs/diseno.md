@@ -42,9 +42,15 @@ Color base `#070B16` con dos manchas de luz desenfocadas, detrás del contenido:
 |---|---|---|
 | Sano | `rgba(255, 255, 255, 0.92)` | `rgba(255, 255, 255, 0.95)` |
 | Caries | `#FB7185` | `#FDA4AF` |
-| Restauración | `#2DD4BF` | `#5EEAD4` |
+| Restauración | `#60A5FA` (azul, como pide RF-03) | `#BFDBFE` |
+| Sellante | `#2DD4BF` | `#5EEAD4` |
+| Implante | `#A78BFA` | `#DDD6FE` |
+| Prótesis fija / removible | `#C4B5FD` / `#F9A8D4` (marco) | — |
+| Exodoncia | cruz `#FB7185` | — |
 | Endodoncia | `#FBBF24` | `#FDE68A` |
 | Ausente | transparente | punteado `rgba(255, 255, 255, 0.4)` |
+
+El color nunca es el único indicador: cada hallazgo tiene leyenda y forma propia (triángulo, tornillo, cruz, marco, contorno punteado) y el estado se distingue por el trazo (punteado = requerido, grueso = realizado).
 
 ### Estados de la cita
 
