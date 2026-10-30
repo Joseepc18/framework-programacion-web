@@ -138,6 +138,16 @@ Reglas que conviene conocer:
 
 Variables nuevas en `backend/.env.example`: `ALMACEN_ARCHIVOS`, `ARCHIVOS_DIR`, `S3_*` y `PROXY_HEADER` (cabecera con la IP real del cliente detrás de un proxy de confianza, para la auditoría).
 
+#### Datos de demostración
+
+Para ver todas las funcionalidades de las Fases 1 y 2 con datos, con la API en marcha (y las migraciones y los datos `9xx` aplicados):
+
+```bash
+cd backend && API_URL=http://localhost:3001 ./scripts/datos-demo.sh   # o: go run ./scripts/datos-demo
+```
+
+Carga por la API real (no con INSERT: así hay firmas, huellas SHA-256, numeración y auditoría reales) citas en todos los estados, signos vitales, archivos, odontograma en dos visitas, dos periodontogramas, evolución firmada con adenda, consentimientos (OTP, manuscrito y revocado), recetas, un presupuesto aprobado parcialmente con una tarea agendada, cobros y el ingreso al portal. Solo añade datos, y si ya los cargó avisa y no duplica (`DEMO_FORZAR=1` lo fuerza). Usa las cuentas de `900_datos_prueba.sql` y necesita el `Notificador` simulado, porque lee el código OTP de la bitácora. También sirve contra la API desplegada con su `API_URL`.
+
 ### Frontend
 
 Requiere Node.js 20.19 o superior (o 22.12+), que es lo que pide Vite 8. Desde `frontend/`, con la API del backend en ejecución:
