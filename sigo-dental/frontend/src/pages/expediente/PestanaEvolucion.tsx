@@ -187,6 +187,9 @@ const FormularioProcedimiento = ({ pacienteId, alIniciar }: { pacienteId: number
         </Selector>
         <Campo id="proc-notas" etiqueta="Notas (opcional)" maxLength={300} value={notas} onChange={(e) => setNotas(e.target.value)} />
       </div>
+      {catalogo.datos?.find((p) => String(p.id) === procedimientoId)?.requiere_consentimiento && (
+        <Aviso tipo="info">Este procedimiento requiere un consentimiento informado firmado y vigente. Si el paciente no lo tiene, el sistema no lo deja iniciar: obténlo en la pestaña Consentimientos.</Aviso>
+      )}
       {accion.error && <Aviso>{accion.error}</Aviso>}
       <Boton type="submit" disabled={accion.ocupado || !procedimientoId}>{accion.ocupado ? 'Iniciando…' : 'Iniciar procedimiento'}</Boton>
     </form>

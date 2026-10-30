@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Titulo } from '../components/ui';
 import PanelParametros from './catalogos/PanelParametros';
+import PanelPlantillas from './catalogos/PanelPlantillas';
 import PanelProcedimientos from './catalogos/PanelProcedimientos';
 import PanelProfesionales from './catalogos/PanelProfesionales';
 import PanelSillones from './catalogos/PanelSillones';
@@ -13,6 +14,7 @@ const PESTANAS = [
   { id: 'procedimientos', etiqueta: 'Procedimientos', panel: () => <PanelProcedimientos /> },
   { id: 'convenios', etiqueta: 'Convenios', panel: () => <PanelSimple recurso="convenios" singular="convenio" /> },
   { id: 'condiciones', etiqueta: 'Condiciones críticas', panel: () => <PanelSimple recurso="condiciones-criticas" singular="condición crítica" /> },
+  { id: 'plantillas', etiqueta: 'Consentimientos', panel: () => <PanelPlantillas /> },
   { id: 'parametros', etiqueta: 'Parámetros', panel: () => <PanelParametros /> },
 ] as const;
 
