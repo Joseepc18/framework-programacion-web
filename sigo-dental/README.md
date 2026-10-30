@@ -122,3 +122,4 @@ Para entrar hay que iniciar sesión en `/login` con una de las cuentas de `backe
 
 - Arquitectura: [docs/architecture.md](docs/architecture.md)
 - Dirección visual: [docs/diseno.md](docs/diseno.md)
+- Plan de implementación por fases: [docs/plan/](docs/plan/README.md)
