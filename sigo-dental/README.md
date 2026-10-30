@@ -6,7 +6,7 @@ Proyecto de la materia Framework de Programación Web (UPSE). Se construye a par
 
 ## Estado
 
-En construcción: existe el esqueleto del backend (`backend/`) con el endpoint `GET /api/health` y el modelo de datos inicial de usuarios y roles; el frontend aún no. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+En construcción: existe el backend (`backend/`) con `GET /api/health`, el modelo de datos de usuarios y roles, y el login con JWT y control de acceso por roles; el frontend aún no. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
 
 ## Alcance
 
@@ -30,7 +30,7 @@ El mismo de la Práctica 03:
 Requiere Go 1.26 y Docker. Desde `backend/`:
 
 ```bash
-cp .env.example .env          # ajustar valores si es necesario
+cp .env.example .env          # ajustar valores y definir JWT_SECRET (ver abajo)
 docker compose up -d postgres redis
 go run .                      # API en http://localhost:3001
 go test ./...
@@ -43,6 +43,20 @@ curl http://localhost:3001/api/health
 ```
 
 Responde `200` con `status: ok`, `200` con `status: degraded` si Redis no responde, o `503` si PostgreSQL no responde.
+
+#### Autenticación y roles
+
+`JWT_SECRET` es obligatoria y debe tener al menos 32 caracteres; la API no arranca sin ella. Se genera una propia, por ejemplo con `openssl rand -base64 48`, y se escribe en `.env` (nunca en `.env.example`).
+
+`POST /api/login` recibe `{"email": "...", "password": "..."}` y responde `200` con `{"token", "email", "rol"}`. El token es un JWT (HS256, 2 horas) con el rol en el claim `rol` y se envía en las demás peticiones como `Authorization: Bearer <token>`. Un correo inexistente, una contraseña errónea y una cuenta desactivada responden lo mismo: `401 Credenciales incorrectas`.
+
+Un middleware protege las rutas: `401` si falta el token o es inválido o expirado, y `403` si el rol no tiene permiso. Hay una ruta de prueba por rol que solo acepta a ese rol: `GET /api/prueba/admin-ti`, `/recepcion`, `/odontologo`, `/asistente` y `/auditor`. Con las cuentas de `900_datos_prueba.sql`:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:3001/api/login -H 'Content-Type: application/json' \n  -d '{"email":"odontologo@sigo-dental.test","password":"<contraseña de 900_datos_prueba.sql>"}' | sed -E 's/.*"token":"([^"]+)".*//')
+curl -i -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/prueba/odontologo   # 200
+curl -i -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/prueba/auditor      # 403
+```
 
 Para levantar también la API en contenedor: `docker compose up --build`.
 
