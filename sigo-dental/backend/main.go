@@ -27,6 +27,13 @@ func main() {
 	}
 	defer pool.Close()
 
+	// Sin una JWT_SECRET válida (presente y de al menos 32 caracteres) la API no arranca.
+	// ConectarDB ya cargó el .env, así que el secreto también se puede definir ahí.
+	secretoJWT, err := config.CargarJWTSecret()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	almacen, err := cache.NuevoRedis()
 	if err != nil {
 		log.Fatal(err)
@@ -38,8 +45,14 @@ func main() {
 	repositorio := repository.Nuevo(pool)
 
 	// ...y se pasan a cada controlador, que solo conoce las interfaces que necesita.
+	auth, err := controllers.NuevoAuthController(repositorio, secretoJWT)
+	if err != nil {
+		log.Fatal(err)
+	}
 	manejadores := routes.Manejadores{
-		Health: controllers.NuevoHealthController(repositorio, almacen),
+		Health:    controllers.NuevoHealthController(repositorio, almacen),
+		Auth:      auth,
+		JWTSecret: secretoJWT,
 	}
 
 	app := fiber.New()
@@ -54,7 +67,7 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		// En producción se indican los orígenes HTTPS del frontend separados por comas.
 		AllowOrigins: origenes,
-		// Authorization queda permitida para el token JWT que se agregará con la autenticación.
+		// Authorization queda permitida para el token JWT.
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
