@@ -81,16 +81,17 @@ func main() {
 	middleware.ConfigurarIPDeProxy(os.Getenv("PROXY_HEADER"), saltosProxy)
 
 	manejadores := routes.Manejadores{
-		Health:     controllers.NuevoHealthController(repositorio, almacen),
-		Auth:       auth,
-		Catalogo:   controllers.NuevoCatalogoController(repositorio),
-		Pacientes:  controllers.NuevoPacientesController(repositorio),
-		Citas:      controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
-		Cobros:     controllers.NuevoCobrosController(repositorio),
-		Expediente: controllers.NuevoExpedienteController(repositorio, archivos),
-		Auditoria:  controllers.NuevoAuditoriaController(repositorio),
-		Auditor:    repositorio,
-		JWTSecret:  secretoJWT,
+		Health:      controllers.NuevoHealthController(repositorio, almacen),
+		Auth:        auth,
+		Catalogo:    controllers.NuevoCatalogoController(repositorio),
+		Pacientes:   controllers.NuevoPacientesController(repositorio),
+		Citas:       controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
+		Cobros:      controllers.NuevoCobrosController(repositorio),
+		Expediente:  controllers.NuevoExpedienteController(repositorio, archivos),
+		Auditoria:   controllers.NuevoAuditoriaController(repositorio),
+		Odontograma: controllers.NuevoOdontogramaController(repositorio),
+		Auditor:     repositorio,
+		JWTSecret:   secretoJWT,
 	}
 
 	// El límite del cuerpo (16 MB) deja subir archivos de hasta 15 MB; Fiber trae 4 MB por defecto.

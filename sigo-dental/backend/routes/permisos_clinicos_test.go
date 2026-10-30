@@ -29,6 +29,12 @@ var permisosClinicos = []permisoRuta{
 	{"POST", "/api/pacientes/1/archivos", rolesClinicos},
 	{"GET", "/api/archivos/1/descargar", rolesClinicos},
 	{"GET", "/api/auditoria", []string{models.RolAdminTI, models.RolAuditor}},
+	// F2-2: el odontólogo escribe el odontograma; el asistente solo lo consulta.
+	{"GET", "/api/pacientes/1/odontograma", rolesClinicos},
+	{"GET", "/api/pacientes/1/odontograma/historial", rolesClinicos},
+	{"POST", "/api/pacientes/1/odontograma/hallazgos", soloOdontologo},
+	{"PUT", "/api/pacientes/1/odontograma/hallazgos/1", soloOdontologo},
+	{"POST", "/api/pacientes/1/odontograma/hallazgos/1/retirar", soloOdontologo},
 }
 
 func TestPermisosDeLosModulosClinicos(t *testing.T) {

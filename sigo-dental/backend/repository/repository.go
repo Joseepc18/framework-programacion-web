@@ -7,24 +7,35 @@ import (
 
 	// pgx aporta ErrNoRows; pgxpool es el pool de conexiones que recibe el repositorio.
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"sigo-dental-backend/models"
 )
 
+// baseDatos es lo que el repositorio usa de la conexión: el pool en producción y una transacción en las pruebas de
+// integración (que se revierte al terminar para no dejar datos).
+type baseDatos interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 // PostgresRepository implementa el acceso a datos sobre un pool de conexiones de PostgreSQL.
 // Se construye una sola vez en main y se inyecta en los controladores por interfaz.
 type PostgresRepository struct {
-	db *pgxpool.Pool
+	db   baseDatos
+	pool *pgxpool.Pool
 }
 
 // Nuevo crea el repositorio con el pool de conexiones recibido.
 func Nuevo(pool *pgxpool.Pool) *PostgresRepository {
-	return &PostgresRepository{db: pool}
+	return &PostgresRepository{db: pool, pool: pool}
 }
 
 // Ping comprueba que PostgreSQL responde (lo usa el health check).
 func (pg *PostgresRepository) Ping(ctx context.Context) error {
-	return pg.db.Ping(ctx)
+	return pg.pool.Ping(ctx)
 }
 
 // BuscarUsuarioPorEmail busca la cuenta por correo junto con el código de su rol.

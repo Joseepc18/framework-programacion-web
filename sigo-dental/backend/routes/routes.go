@@ -20,6 +20,8 @@ type Manejadores struct {
 	// Expediente (F2-1): signos vitales, archivos y consulta de la auditoría.
 	Expediente *controllers.ExpedienteController
 	Auditoria  *controllers.AuditoriaController
+	// Módulos clínicos de la Fase 2.
+	Odontograma *controllers.OdontogramaController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -57,6 +59,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarCitas(app, m, autenticado)
 	registrarCobros(app, m, autenticado)
 	registrarExpediente(app, m, autenticado)
+	registrarOdontograma(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -161,4 +164,20 @@ func registrarExpediente(app *fiber.App, m Manejadores, autenticado fiber.Handle
 	app.Get("/api/archivos/:id/descargar", autenticado, clinico, auditar(m, models.AccionExportacion, "archivo", middleware.EntidadDeRuta("id")), exp.DescargarArchivo)
 
 	app.Get("/api/auditoria", autenticado, lectorAuditoria, auditar(m, models.AccionConsulta, "auditoria"), aud.ListarAuditoria)
+}
+
+// registrarOdontograma declara las rutas del odontograma (F2-2): el odontólogo registra, corrige y retira hallazgos;
+// el asistente solo consulta.
+func registrarOdontograma(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	lectura := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	escritura := middleware.RequireRoles(models.RolOdontologo)
+	odo := m.Odontograma
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/odontograma"
+
+	app.Get(base, autenticado, lectura, auditar(m, models.AccionConsulta, "odontograma", paciente), odo.ObtenerOdontograma)
+	app.Get(base+"/historial", autenticado, lectura, auditar(m, models.AccionConsulta, "odontograma_historial", paciente), odo.HistorialOdontograma)
+	app.Post(base+"/hallazgos", autenticado, escritura, auditar(m, models.AccionCreacion, "hallazgo", paciente), odo.RegistrarHallazgo)
+	app.Put(base+"/hallazgos/:hid", autenticado, escritura, auditar(m, models.AccionModificacion, "hallazgo", paciente), odo.CorregirHallazgo)
+	app.Post(base+"/hallazgos/:hid/retirar", autenticado, escritura, auditar(m, models.AccionModificacion, "hallazgo", paciente, middleware.EntidadDeRuta("hid")), odo.RetirarHallazgo)
 }
