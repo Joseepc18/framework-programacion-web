@@ -6,7 +6,7 @@ Proyecto de la materia Framework de Programación Web (UPSE). Se construye a par
 
 ## Estado
 
-En construcción: existe el backend (`backend/`) con `GET /api/health`, el modelo de datos de usuarios y roles, y el login con JWT y control de acceso por roles; el frontend (`frontend/`) tiene el esqueleto con el layout responsive y una página que muestra `GET /api/health`, y aún no tiene login ni módulos clínicos. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+En construcción: existe el backend (`backend/`) con `GET /api/health`, el modelo de datos de usuarios y roles, y el login con JWT y control de acceso por roles; el frontend (`frontend/`) tiene el layout responsive, el login conectado a la API con rutas y menú según el rol, y una página que muestra `GET /api/health`; aún no tiene módulos clínicos. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
 
 ## Alcance
 
@@ -90,7 +90,7 @@ npm run lint
 
 El servidor de desarrollo usa siempre el puerto 5173 (si está ocupado, falla en lugar de cambiar de puerto), porque es el origen que admite el CORS del backend por defecto. Para probar desde otro equipo de la red, como una tablet, hay que agregar ese origen a `CORS_ALLOWED_ORIGINS` en el `.env` del backend.
 
-El menú tiene dos páginas: Inicio y Estado del sistema (`/estado`), que consulta `GET /api/health` y muestra el estado de PostgreSQL y Redis. La barra lateral es fija desde 768 px de ancho (se puede colapsar a solo iconos) y es un cajón con botón de menú en pantallas más angostas, para cumplir el RNF-07 (escritorio, laptop y tablets de 10,5 pulgadas o más). La interfaz sigue la dirección visual Aurora ([docs/diseno.md](docs/diseno.md)): tema oscuro con paneles de vidrio, un solo acento turquesa y las fuentes Sora y JetBrains Mono, que se sirven desde el propio proyecto (paquetes `@fontsource`). Los colores, radios y tipografías son tokens del bloque `@theme` de `frontend/src/index.css`. `vercel.json` redirige todas las rutas a `index.html` para poder recargar páginas del router en Vercel.
+Para entrar hay que iniciar sesión en `/login` con una de las cuentas de `backend/database/900_datos_prueba.sql` (una por rol; la contraseña está solo en ese archivo). Sin sesión, cualquier otra ruta redirige al login. El menú muestra solo lo que el rol puede abrir: Inicio para todos, Estado del sistema (`/estado`, consulta `GET /api/health`) solo para `admin_ti`, y un área por rol (`/area/<rol>`) que consulta la ruta de prueba `GET /api/prueba/<rol>` del backend; abrir el área de otro rol muestra "Acceso denegado". La sesión se cierra a los 15 minutos sin actividad (RNF-05), al pulsar "Cerrar sesión" o si la API responde 401, y el token solo se guarda en memoria: recargar la página (F5) también cierra la sesión. La barra lateral es fija desde 768 px de ancho (se puede colapsar a solo iconos) y es un cajón con botón de menú en pantallas más angostas, para cumplir el RNF-07 (escritorio, laptop y tablets de 10,5 pulgadas o más). La interfaz sigue la dirección visual Aurora ([docs/diseno.md](docs/diseno.md)): tema oscuro con paneles de vidrio, un solo acento turquesa y las fuentes Sora y JetBrains Mono, que se sirven desde el propio proyecto (paquetes `@fontsource`). Los colores, radios y tipografías son tokens del bloque `@theme` de `frontend/src/index.css`. `vercel.json` redirige todas las rutas a `index.html` para poder recargar páginas del router en Vercel.
 
 ## Documentación
 
