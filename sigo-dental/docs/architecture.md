@@ -61,6 +61,7 @@ Frontend (`frontend/`): React con TypeScript, Vite, Tailwind y React Router. `sr
 - El portal no limita los intentos por IP (sí por código, por paciente y por tiempo).
 - El visor DICOM queda fuera de alcance, como en el documento.
 - La nota de evolución y las demás pantallas no se midieron con el throttling de red del navegador (RNF-01); esa medición es de la Fase 4.
+- **Archivos en PostgreSQL cuando no hay disco persistente.** El disco del plan gratuito de Render se vacía en cada despliegue, y los archivos del expediente (radiografías y PDF de consentimientos) quedaban registrados sin contenido. El adaptador `Postgres` de `AlmacenArchivos` guarda el contenido en una tabla de solo inserción (`archivos_contenido`), así sobrevive a los despliegues sin depender de un servicio externo. Es adecuado para archivos pequeños y volúmenes de demostración; con muchas radiografías conviene pasar al adaptador S3, que usa la misma interfaz.
 
 ## Pendiente de decidir
 

@@ -78,6 +78,7 @@ PostgreSQL ejecuta los scripts de `backend/database/` en orden alfabético, **so
 - `012_recetas.sql`: recetas numeradas, medicamentos y anulaciones.
 - `013_presupuestos.sql`: presupuestos por fases y sesiones, ítems con descuentos autorizados y su vínculo con citas y procedimientos.
 - `014_portal_paciente.sql`: rol `paciente` y cuenta del portal.
+- `015_archivos_contenido.sql`: contenido de los archivos del paciente dentro de la base de datos.
 - `900_datos_prueba.sql`: un usuario por rol con contraseña bcrypt, solo para desarrollo. Las credenciales de prueba están en ese archivo.
 - `901_`, `902_` y `903_`: catálogo, pacientes y citas de ejemplo, solo para desarrollo.
 
@@ -133,7 +134,7 @@ Reglas que conviene conocer:
 - **Consentimiento.** Un procedimiento marcado «requiere consentimiento» no se puede iniciar sin un consentimiento firmado, vigente (180 días, parámetro) y no revocado. Se firma con el dedo (trazo) o con un código OTP de 6 dígitos que vence a los 10 minutos y admite 3 intentos; si el paciente es menor firma su tutor. El PDF firmado queda guardado e inmutable. Con el `Notificador` simulado, el código se ve en la bitácora (pestaña Consentimientos).
 - **Periodontograma.** NIC = profundidad al sondaje + margen gingival; el margen es positivo si hay recesión y negativo si la encía cubre la unión cemento-esmalte. El servidor lo calcula siempre.
 - **Presupuestos.** Los importes (en centavos) los calcula el servidor. Un descuento exige la autorización de un rol habilitado (parámetro `descuento_roles`, por defecto odontólogo y administrador TI) y queda registrado quién lo autorizó.
-- **Archivos.** Se guardan detrás de la interfaz `AlmacenArchivos`: en disco local en desarrollo (`ARCHIVOS_DIR`) y en un almacén compatible con S3 en producción (`ALMACEN_ARCHIVOS=s3`). Solo JPG, PNG, WebP y PDF (se valida el contenido), hasta `archivos_max_mb` (15 por defecto).
+- **Archivos.** Se guardan detrás de la interfaz `AlmacenArchivos`: en disco local en desarrollo (`ARCHIVOS_DIR`) y en un almacén compatible con S3 en producción (`ALMACEN_ARCHIVOS=s3`) o dentro de la propia base de datos (`ALMACEN_ARCHIVOS=postgres`, migración 015), que es lo que usa el despliegue gratuito de Render porque su disco se vacía en cada despliegue. Solo JPG, PNG, WebP y PDF (se valida el contenido), hasta `archivos_max_mb` (15 por defecto).
 - **Portal del paciente.** Ingresa con su documento y un código OTP; solo ve y cambia lo suyo. Es una aplicación instalable (manifiesto y service worker, que guarda solo el cascarón: nunca datos de la API).
 
 Variables nuevas en `backend/.env.example`: `ALMACEN_ARCHIVOS`, `ARCHIVOS_DIR`, `S3_*` y `PROXY_HEADER` (cabecera con la IP real del cliente detrás de un proxy de confianza, para la auditoría).
