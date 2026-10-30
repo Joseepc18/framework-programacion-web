@@ -25,7 +25,7 @@ const Layout = () => {
       <Sidebar isCollapsed={isCollapsed} isMobileOpen={isMobileOpen} closeMobileMenu={closeMobileMenu} />
 
       {isMobileOpen && (
-        <div onClick={closeMobileMenu} aria-hidden="true" className="fixed inset-0 z-40 bg-slate-900/60 md:hidden" />
+        <div onClick={closeMobileMenu} aria-hidden="true" className="fixed inset-0 z-40 bg-fondo/70 md:hidden" />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
