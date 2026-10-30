@@ -9,6 +9,7 @@ import { useCarga } from '../hooks/useCarga';
 import { listarSimples, type ItemCatalogo } from '../services/catalogoService';
 import PestanaArchivos from './expediente/PestanaArchivos';
 import PestanaOdontograma from './expediente/PestanaOdontograma';
+import PestanaPeriodonto from './expediente/PestanaPeriodonto';
 import PestanaSignos from './expediente/PestanaSignos';
 import { actualizarAnamnesis, ETIQUETA_CANAL, obtenerPaciente, type Anamnesis, type PacienteDetalle } from '../services/pacienteService';
 
@@ -113,6 +114,7 @@ const PESTANAS: readonly Pestana[] = [
   { id: 'datos', etiqueta: 'Datos del paciente' },
   { id: 'anamnesis', etiqueta: 'Anamnesis' },
   { id: 'odontograma', etiqueta: 'Odontograma', clinica: true },
+  { id: 'periodonto', etiqueta: 'Periodontograma', clinica: true },
   { id: 'signos', etiqueta: 'Signos vitales', clinica: true },
   { id: 'archivos', etiqueta: 'Archivos', clinica: true },
 ];
@@ -140,6 +142,8 @@ const PacienteFichaPage = () => {
         return <PestanaAnamnesis key={p.id} p={p} condiciones={condiciones.datos ?? []} puedeEditar={esClinico} alGuardar={paciente.recargar} />;
       case 'odontograma':
         return <PestanaOdontograma pacienteId={p.id} edad={p.edad} puedeEditar={usuario?.rol === 'odontologo'} />;
+      case 'periodonto':
+        return <PestanaPeriodonto pacienteId={p.id} />;
       case 'signos':
         return <PestanaSignos pacienteId={p.id} />;
       case 'archivos':
