@@ -11,12 +11,14 @@ import {
   House,
   Library,
   Shield,
+  Smile,
   Stethoscope,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 
-export type Rol = 'admin_ti' | 'recepcionista' | 'odontologo' | 'asistente' | 'auditor';
+// 'paciente' es la cuenta del portal del paciente (F2-8); los otros cinco son los roles del personal.
+export type Rol = 'admin_ti' | 'recepcionista' | 'odontologo' | 'asistente' | 'auditor' | 'paciente';
 
 export const ETIQUETA_ROL: Record<Rol, string> = {
   admin_ti: 'Administrador TI',
@@ -24,6 +26,7 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
   odontologo: 'Odontólogo',
   asistente: 'Asistente dental',
   auditor: 'Auditor',
+  paciente: 'Paciente',
 };
 
 export const esRol = (valor: unknown): valor is Rol =>
@@ -58,6 +61,7 @@ export const rutaDeArea = (area: AreaRol) => `/area/${area.slug}`;
 
 export const MENU: readonly ElementoMenu[] = [
   { to: '/', label: 'Inicio', icon: House },
+  { to: '/portal', label: 'Mi portal', icon: Smile, roles: ['paciente'] },
   { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'] },
   { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'] },
   { to: '/pacientes', label: 'Pacientes', icon: Users, roles: ['recepcionista', 'odontologo', 'asistente'] },

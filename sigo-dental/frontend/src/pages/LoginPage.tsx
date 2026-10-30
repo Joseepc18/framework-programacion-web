@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth, type AvisoSesion } from '../context/useAuth';
 import { ApiError } from '../services/http';
 
@@ -99,6 +99,9 @@ const LoginPage = () => {
             {enviando ? 'Verificando…' : 'Iniciar sesión'}
           </button>
         </form>
+        <p className="mt-6 text-etiqueta text-texto-suave">
+          ¿Eres paciente? <Link className="text-acento underline" to="/portal/ingreso">Entra a tu portal</Link>.
+        </p>
       </div>
     </main>
   );

@@ -28,14 +28,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsuario({ email: sesion.email, rol: sesion.rol });
   }, []);
 
+  const establecerSesion = useCallback((sesion: { token: string; email: string; rol: Usuario['rol'] }) => {
+    guardarToken(sesion.token);
+    setAviso(null);
+    setUsuario({ email: sesion.email, rol: sesion.rol });
+  }, []);
+
   // Un 401 de cualquier petición con sesión (token vencido o inválido) la cierra.
   useEffect(() => alSesionExpirada(() => cerrarPorMotivo('expirada')), [cerrarPorMotivo]);
 
   useInactividad(usuario !== null, () => cerrarPorMotivo('inactividad'));
 
   const valor = useMemo<AuthContextType>(
-    () => ({ usuario, aviso, iniciarSesion, cerrarSesion, descartarAviso: () => setAviso(null) }),
-    [usuario, aviso, iniciarSesion, cerrarSesion],
+    () => ({ usuario, aviso, iniciarSesion, establecerSesion, cerrarSesion, descartarAviso: () => setAviso(null) }),
+    [usuario, aviso, iniciarSesion, establecerSesion, cerrarSesion],
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
