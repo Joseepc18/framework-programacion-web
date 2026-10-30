@@ -9,6 +9,7 @@ import {
   Library,
   Shield,
   Stethoscope,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ export const MENU: readonly ElementoMenu[] = [
   { to: '/', label: 'Inicio', icon: House },
   { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'] },
   { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'] },
+  { to: '/pacientes', label: 'Pacientes', icon: Users, roles: ['recepcionista', 'odontologo', 'asistente'] },
   ...AREAS.map((area) => ({ to: rutaDeArea(area), label: area.label, icon: area.icon, roles: [area.rol] })),
 ];
 

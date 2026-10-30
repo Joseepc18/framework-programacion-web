@@ -1,0 +1,162 @@
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { useParams } from 'react-router-dom';
+import AnamnesisCampos from '../components/AnamnesisCampos';
+import CabeceraPaciente from '../components/CabeceraPaciente';
+import { Aviso, Boton, BotonEnlace, Tarjeta } from '../components/ui';
+import { useAuth } from '../context/useAuth';
+import { useAccion } from '../hooks/useAccion';
+import { useCarga } from '../hooks/useCarga';
+import { listarSimples, type ItemCatalogo } from '../services/catalogoService';
+import { actualizarAnamnesis, ETIQUETA_CANAL, obtenerPaciente, type Anamnesis, type PacienteDetalle } from '../services/pacienteService';
+
+const Dato = ({ etiqueta, children }: { etiqueta: string; children: ReactNode }) => (
+  <div>
+    <dt className="text-etiqueta text-texto-suave">{etiqueta}</dt>
+    <dd className="mt-1">{children || <span className="text-texto-suave">—</span>}</dd>
+  </div>
+);
+
+const PestanaDatos = ({ p }: { p: PacienteDetalle }) => (
+  <div className="space-y-6">
+    <Tarjeta>
+      <h2 className="text-seccion font-semibold">Datos personales</h2>
+      <dl className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Dato etiqueta="Fecha de nacimiento"><span className="font-mono">{p.fecha_nacimiento}</span></Dato>
+        <Dato etiqueta="Sexo"><span className="capitalize">{p.sexo}</span></Dato>
+        <Dato etiqueta="Teléfono"><span className="font-mono">{p.telefono}</span></Dato>
+        <Dato etiqueta="Correo">{p.email}</Dato>
+        <Dato etiqueta="Dirección">{p.direccion}</Dato>
+        <Dato etiqueta="Canal preferido para avisos">{ETIQUETA_CANAL[p.canal_preferido]}</Dato>
+      </dl>
+    </Tarjeta>
+    <Tarjeta>
+      <h2 className="text-seccion font-semibold">Contacto de emergencia</h2>
+      <dl className="mt-5 grid gap-5 md:grid-cols-3">
+        <Dato etiqueta="Nombre">{p.emergencia_nombre}</Dato>
+        <Dato etiqueta="Teléfono"><span className="font-mono">{p.emergencia_telefono}</span></Dato>
+        <Dato etiqueta="Parentesco">{p.emergencia_parentesco}</Dato>
+      </dl>
+    </Tarjeta>
+    {(p.tutor_nombre || p.edad < 18) && (
+      <Tarjeta>
+        <h2 className="text-seccion font-semibold">Tutor legal</h2>
+        <dl className="mt-5 grid gap-5 md:grid-cols-3">
+          <Dato etiqueta="Nombre">{p.tutor_nombre}</Dato>
+          <Dato etiqueta="Documento"><span className="font-mono">{p.tutor_documento}</span></Dato>
+          <Dato etiqueta="Teléfono"><span className="font-mono">{p.tutor_telefono}</span></Dato>
+        </dl>
+      </Tarjeta>
+    )}
+  </div>
+);
+
+interface PestanaAnamnesisProps {
+  p: PacienteDetalle;
+  condiciones: ItemCatalogo[];
+  puedeEditar: boolean;
+  alGuardar: () => void;
+}
+
+const PestanaAnamnesis = ({ p, condiciones, puedeEditar, alGuardar }: PestanaAnamnesisProps) => {
+  const accion = useAccion();
+  const [valor, setValor] = useState<Anamnesis>(p.anamnesis);
+  const [guardado, setGuardado] = useState(false);
+
+  // Las condiciones desactivadas del catálogo ya no se ofrecen, pero el paciente las conserva al guardar.
+  const ocultas = p.anamnesis.condiciones_criticas.filter((id) => !condiciones.some((c) => c.id === id));
+
+  const guardar = async (evento: FormEvent) => {
+    evento.preventDefault();
+    setGuardado(false);
+    const bien = await accion.ejecutar(() => actualizarAnamnesis(p.id, { ...valor, condiciones_criticas: [...valor.condiciones_criticas, ...ocultas] }));
+    if (bien) {
+      setGuardado(true);
+      alGuardar();
+    }
+  };
+
+  if (!puedeEditar) {
+    return (
+      <Tarjeta>
+        <dl className="grid gap-5 md:grid-cols-2">
+          <Dato etiqueta="Enfermedades sistémicas">{p.anamnesis.enfermedades_sistemicas}</Dato>
+          <Dato etiqueta="Alergias a fármacos">{p.anamnesis.alergias_farmacos}</Dato>
+          <Dato etiqueta="Antecedentes quirúrgicos">{p.anamnesis.antecedentes_quirurgicos}</Dato>
+          <Dato etiqueta="Coagulopatías">{p.anamnesis.coagulopatias}</Dato>
+        </dl>
+        <p className="mt-5 text-etiqueta text-texto-suave">La anamnesis la actualiza el odontólogo o el asistente dental.</p>
+      </Tarjeta>
+    );
+  }
+
+  return (
+    <form onSubmit={guardar} className="space-y-5">
+      <Tarjeta><AnamnesisCampos prefijo="ficha" valor={valor} onChange={setValor} condiciones={condiciones} /></Tarjeta>
+      {accion.error && <Aviso>{accion.error}</Aviso>}
+      {guardado && <Aviso tipo="info">Anamnesis guardada.</Aviso>}
+      <Boton type="submit" disabled={accion.ocupado}>{accion.ocupado ? 'Guardando…' : 'Guardar anamnesis'}</Boton>
+    </form>
+  );
+};
+
+const PESTANAS = [
+  { id: 'datos', etiqueta: 'Datos del paciente' },
+  { id: 'anamnesis', etiqueta: 'Anamnesis' },
+] as const;
+
+// Ficha del paciente: cabecera con la alerta médica y dos pestañas. Las pestañas clínicas
+// (odontograma, evolución, recetas...) se suman en la Fase 2.
+const PacienteFichaPage = () => {
+  const { id: idRuta } = useParams();
+  const id = Number(idRuta);
+  const { usuario } = useAuth();
+  const paciente = useCarga(() => obtenerPaciente(id), `ficha-${id}`);
+  const condiciones = useCarga(() => listarSimples('condiciones-criticas'), 'condiciones-activas');
+  const [activa, setActiva] = useState<(typeof PESTANAS)[number]['id']>('datos');
+
+  if (paciente.error) return <Aviso>{paciente.error}</Aviso>;
+  if (!paciente.datos || !condiciones.datos) return <p>Cargando…</p>;
+  const p = paciente.datos;
+
+  return (
+    <section className="space-y-6" aria-label={`Expediente de ${p.nombres} ${p.apellidos}`}>
+      <CabeceraPaciente paciente={p} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="Secciones del expediente" className="flex flex-wrap gap-2">
+          {PESTANAS.map((t) => (
+            <button
+              key={t.id}
+              id={`tab-${t.id}`}
+              role="tab"
+              type="button"
+              aria-selected={t.id === activa}
+              aria-controls="panel-ficha"
+              onClick={() => setActiva(t.id)}
+              className={`min-h-11 rounded-control border px-4 text-cuerpo transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento ${
+                t.id === activa ? 'border-item-activo-borde bg-item-activo font-semibold text-texto' : 'border-transparent text-texto-suave hover:bg-chip-neutro-fondo hover:text-texto'
+              }`}
+            >
+              {t.etiqueta}
+            </button>
+          ))}
+        </div>
+        {usuario?.rol === 'recepcionista' && <BotonEnlace variante="secundario" to={`/pacientes/${p.id}/editar`}>Editar datos</BotonEnlace>}
+      </div>
+      <div id="panel-ficha" role="tabpanel" aria-labelledby={`tab-${activa}`}>
+        {activa === 'datos' ? (
+          <PestanaDatos p={p} />
+        ) : (
+          <PestanaAnamnesis
+            key={p.id}
+            p={p}
+            condiciones={condiciones.datos}
+            puedeEditar={usuario?.rol === 'odontologo' || usuario?.rol === 'asistente'}
+            alGuardar={paciente.recargar}
+          />
+        )}
+      </div>
+    </section>
+  );
+};
+
+export default PacienteFichaPage;

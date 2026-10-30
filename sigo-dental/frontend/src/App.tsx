@@ -9,6 +9,9 @@ import HealthPage from './pages/HealthPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import PacienteFichaPage from './pages/PacienteFichaPage';
+import PacienteFormPage from './pages/PacienteFormPage';
+import PacientesPage from './pages/PacientesPage';
 
 const App = () => (
   <AuthProvider>
@@ -21,6 +24,14 @@ const App = () => (
             <Route element={<RutaProtegida roles={['admin_ti']} />}>
               <Route path="estado" element={<HealthPage />} />
               <Route path="catalogos" element={<CatalogosPage />} />
+            </Route>
+            <Route element={<RutaProtegida roles={['recepcionista', 'odontologo', 'asistente']} />}>
+              <Route path="pacientes" element={<PacientesPage />} />
+              <Route path="pacientes/:id" element={<PacienteFichaPage />} />
+            </Route>
+            <Route element={<RutaProtegida roles={['recepcionista']} />}>
+              <Route path="pacientes/nuevo" element={<PacienteFormPage />} />
+              <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
             </Route>
             {AREAS.map((area) => (
               <Route key={area.slug} element={<RutaProtegida roles={[area.rol]} />}>

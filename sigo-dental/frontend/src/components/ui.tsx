@@ -1,4 +1,5 @@
 // Piezas de interfaz compartidas por los módulos. Solo usan los tokens de Aurora (docs/diseno.md).
+import { Link, type LinkProps } from 'react-router-dom';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
 const ENFOQUE = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento';
@@ -65,6 +66,17 @@ export const Boton = ({
   <button
     type={type}
     className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-control border px-5 text-cuerpo transition disabled:opacity-50 ${ENFOQUE} ${VARIANTES[variante]} ${className}`}
+    {...resto}
+  />
+);
+
+export const BotonEnlace = ({
+  variante = 'primario',
+  className = '',
+  ...resto
+}: { variante?: Variante } & LinkProps) => (
+  <Link
+    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-control border px-5 text-cuerpo transition ${ENFOQUE} ${VARIANTES[variante]} ${className}`}
     {...resto}
   />
 );
