@@ -1,6 +1,7 @@
 // Cliente HTTP centralizado para consumir la API de SIGO-Dental.
 // La URL base sale de VITE_API_URL; si falta, se usa la API local.
-// La cabecera Authorization con el JWT se agrega junto con el login.
+// Si hay una sesión, agrega la cabecera Authorization con el JWT; un 401 con token enviado cierra la sesión.
+import { notificarSesionExpirada, obtenerToken } from './sesion';
 
 export class ApiError extends Error {
   status: number;
@@ -22,9 +23,17 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
     headers.set('Content-Type', 'application/json');
   }
 
+  const tokenEnviado = obtenerToken();
+  if (tokenEnviado && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${tokenEnviado}`);
+  }
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
 
   if (!response.ok) {
+    if (response.status === 401 && tokenEnviado) {
+      notificarSesionExpirada(tokenEnviado);
+    }
     let cuerpo: { message?: string; details?: unknown } = {};
     try {
       cuerpo = await response.json();
