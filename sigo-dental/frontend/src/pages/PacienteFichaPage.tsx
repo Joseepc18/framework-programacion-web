@@ -12,6 +12,7 @@ import PestanaConsentimientos from './expediente/PestanaConsentimientos';
 import PestanaEvolucion from './expediente/PestanaEvolucion';
 import PestanaOdontograma from './expediente/PestanaOdontograma';
 import PestanaPeriodonto from './expediente/PestanaPeriodonto';
+import PestanaRecetas from './expediente/PestanaRecetas';
 import PestanaSignos from './expediente/PestanaSignos';
 import { actualizarAnamnesis, ETIQUETA_CANAL, obtenerPaciente, type Anamnesis, type PacienteDetalle } from '../services/pacienteService';
 
@@ -118,6 +119,7 @@ const PESTANAS: readonly Pestana[] = [
   { id: 'odontograma', etiqueta: 'Odontograma', clinica: true },
   { id: 'evolucion', etiqueta: 'Evolución', clinica: true },
   { id: 'consentimientos', etiqueta: 'Consentimientos', clinica: true },
+  { id: 'recetas', etiqueta: 'Recetas', clinica: true },
   { id: 'periodonto', etiqueta: 'Periodontograma', clinica: true },
   { id: 'signos', etiqueta: 'Signos vitales', clinica: true },
   { id: 'archivos', etiqueta: 'Archivos', clinica: true },
@@ -144,6 +146,8 @@ const PacienteFichaPage = () => {
     switch (activa) {
       case 'anamnesis':
         return <PestanaAnamnesis key={p.id} p={p} condiciones={condiciones.datos ?? []} puedeEditar={esClinico} alGuardar={paciente.recargar} />;
+      case 'recetas':
+        return <PestanaRecetas pacienteId={p.id} />;
       case 'consentimientos':
         return <PestanaConsentimientos pacienteId={p.id} />;
       case 'evolucion':
