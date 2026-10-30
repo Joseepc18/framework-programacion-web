@@ -6,7 +6,7 @@ Proyecto de la materia Framework de Programación Web (UPSE). Se construye a par
 
 ## Estado
 
-En construcción: existe el backend (`backend/`) con `GET /api/health`, el modelo de datos de usuarios y roles, y el login con JWT y control de acceso por roles; el frontend (`frontend/`) tiene el layout responsive, el login conectado a la API con rutas y menú según el rol, y una página que muestra `GET /api/health`; aún no tiene módulos clínicos. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+En construcción: la Fase 1 (catálogo, pacientes, agenda, avisos y cobros) y la Fase 2 (expediente clínico: odontograma, periodontograma, evolución SOEP con firma digital, consentimientos, recetas, presupuestos, auditoría y portal del paciente) están implementadas; faltan las Fases 3 y 4 (ver [docs/plan](docs/plan/README.md)). El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
 
 ## Alcance
 
@@ -70,13 +70,21 @@ PostgreSQL ejecuta los scripts de `backend/database/` en orden alfabético, **so
 - `004_agenda.sql`: citas, su historial de estados y la regla RN-03 (un sillón no puede tener dos citas que se solapen, garantizada con una restricción `EXCLUDE` de PostgreSQL).
 - `005_notificaciones.sql`: bitácora de avisos de cita (un solo mensaje vigente por tipo).
 - `006_facturacion.sql`: cobros, líneas, pagos, anulaciones y el contador de comprobantes sin huecos.
+- `007_expediente_auditoria.sql`: bitácora de accesos de solo inserción (RNF-06), signos vitales y archivos del paciente.
+- `008_odontograma.sql`: hallazgos del odontograma con historial; un hallazgo realizado no se modifica (RN-01).
+- `009_periodontograma.sql`: exámenes periodontales (seis puntos por diente, furca y movilidad).
+- `010_evolucion.sql`: firmas digitales, notas SOEP, procedimientos realizados y adendas, con disparadores de inmutabilidad (RN-01).
+- `011_consentimientos.sql`: plantillas y consentimientos informados, y códigos OTP.
+- `012_recetas.sql`: recetas numeradas, medicamentos y anulaciones.
+- `013_presupuestos.sql`: presupuestos por fases y sesiones, ítems con descuentos autorizados y su vínculo con citas y procedimientos.
+- `014_portal_paciente.sql`: rol `paciente` y cuenta del portal.
 - `900_datos_prueba.sql`: un usuario por rol con contraseña bcrypt, solo para desarrollo. Las credenciales de prueba están en ese archivo.
 - `901_`, `902_` y `903_`: catálogo, pacientes y citas de ejemplo, solo para desarrollo.
 
 Para aplicar un script nuevo en una base ya creada (sin borrarla), por ejemplo:
 
 ```bash
-docker exec -i sigo-dental-db psql -v ON_ERROR_STOP=1 -q -U sigo_dental -d sigo_dental < backend/database/006_facturacion.sql
+docker exec -i sigo-dental-db psql -v ON_ERROR_STOP=1 -q -U sigo_dental -d sigo_dental < backend/database/014_portal_paciente.sql
 ```
 
 Para recrear la base desde cero (borra sus datos):
@@ -101,6 +109,34 @@ En Neon se aplican a mano los scripts `0xx` (por ejemplo con `psql "$DATABASE_UR
 Reglas que conviene conocer: el dinero se guarda en centavos enteros y el servidor calcula siempre precios y totales; nada se borra (los pacientes y catálogos se desactivan y los cobros se anulan con motivo); las horas se guardan en UTC y se muestran en la zona horaria de la clínica (`America/Guayaquil`); el número de comprobante (`C-000001`…) no deja huecos aunque haya cobros simultáneos; un cobro no admite pagos que superen su total.
 
 Los avisos de cita (confirmación inmediata y recordatorios 48 h y 24 h antes) salen por un `Notificador` simulado: se registran en la bitácora pero no se envía nada real hasta tener las credenciales de un proveedor de WhatsApp o SMS. Variables en `backend/.env.example`: `NOTIFICADOR`, `FRONTEND_URL` (arma el enlace de confirmación) y `NOTIFICACIONES_INTERVALO`. El enlace lleva un token firmado con `JWT_SECRET` y deja de valer si la cita se reprograma o ya empezó.
+
+#### Módulos de la Fase 2
+
+Todos cuelgan del expediente del paciente (`/pacientes/:id`, con una pestaña por módulo). Cada consulta, creación, modificación, firma o exportación de un registro clínico queda en la bitácora inmutable `auditoria_accesos` (usuario, acción, registro, paciente, fecha ISO-8601 en UTC e IP).
+
+| Módulo | Quién lo usa | Endpoints principales |
+| --- | --- | --- |
+| Auditoría, signos vitales y archivos (F2-1) | auditoría: administrador TI y auditor (solo lectura); signos y archivos: odontólogo y asistente | `/api/auditoria`, `/api/pacientes/:id/signos-vitales`, `/api/pacientes/:id/archivos`, `/api/archivos/:id/descargar` |
+| Odontograma (F2-2) | consulta: odontólogo y asistente; registra, corrige y retira: odontólogo | `/api/pacientes/:id/odontograma`, `.../odontograma/hallazgos`, `.../odontograma/historial` |
+| Periodontograma (F2-3) | odontólogo y asistente | `/api/pacientes/:id/periodontogramas` |
+| Evolución SOEP, firma, adendas y procedimientos (F2-4) | redacta: odontólogo y asistente; firma, adenda y procedimientos: odontólogo | `.../notas`, `.../notas/:nid/firmar`, `.../adendas`, `.../procedimientos-realizados` |
+| Consentimiento informado (F2-5) | prepara y revoca: odontólogo; recoge la firma: odontólogo y asistente; plantillas: administrador TI | `.../consentimientos`, `.../consentimientos/:cid/otp`, `.../firmar`, `/api/consentimiento-plantillas` |
+| Recetas (F2-6) | emite, firma y anula: odontólogo; consulta: asistente | `.../recetas`, `.../recetas/:rid/firmar`, `.../anular`, `.../pdf` |
+| Presupuestos y tareas (F2-7) | arma: odontólogo; presenta y registra la aprobación: recepción y odontólogo | `.../presupuestos`, `.../presentar`, `.../resolver`, `.../nueva-version`, `.../tareas` |
+| Portal del paciente (F2-8) | el propio paciente | `/api/portal/codigo`, `/api/portal/ingresar`, `/api/portal/citas`, `/api/portal/recetas`, `/api/portal/consentimientos` |
+
+Reglas que conviene conocer:
+
+- **Inmutabilidad (RN-01).** Una nota firmada, un procedimiento realizado, un hallazgo realizado, un consentimiento firmado, una receta firmada y un presupuesto presentado no se editan ni se borran, ni desde la API ni desde la base (disparadores). Las correcciones son notas de adenda firmadas, una versión nueva del presupuesto o una anulación con registro.
+- **Plazo de edición.** Una nota SOEP se edita durante `bloqueo_nota_horas` (24 por defecto, parámetro) y se bloquea al firmarse o al vencer; una vencida sin firma queda «pendiente de firma» y su profesional todavía puede firmarla.
+- **Firma digital.** Es una firma electrónica simple, no un certificado: el profesional vuelve a escribir su contraseña y queda la huella SHA-256 del contenido, su identidad y la fecha. Una contraseña errónea responde `403`, no `401`, para no cerrar la sesión.
+- **Consentimiento.** Un procedimiento marcado «requiere consentimiento» no se puede iniciar sin un consentimiento firmado, vigente (180 días, parámetro) y no revocado. Se firma con el dedo (trazo) o con un código OTP de 6 dígitos que vence a los 10 minutos y admite 3 intentos; si el paciente es menor firma su tutor. El PDF firmado queda guardado e inmutable. Con el `Notificador` simulado, el código se ve en la bitácora (pestaña Consentimientos).
+- **Periodontograma.** NIC = profundidad al sondaje + margen gingival; el margen es positivo si hay recesión y negativo si la encía cubre la unión cemento-esmalte. El servidor lo calcula siempre.
+- **Presupuestos.** Los importes (en centavos) los calcula el servidor. Un descuento exige la autorización de un rol habilitado (parámetro `descuento_roles`, por defecto odontólogo y administrador TI) y queda registrado quién lo autorizó.
+- **Archivos.** Se guardan detrás de la interfaz `AlmacenArchivos`: en disco local en desarrollo (`ARCHIVOS_DIR`) y en un almacén compatible con S3 en producción (`ALMACEN_ARCHIVOS=s3`). Solo JPG, PNG, WebP y PDF (se valida el contenido), hasta `archivos_max_mb` (15 por defecto).
+- **Portal del paciente.** Ingresa con su documento y un código OTP; solo ve y cambia lo suyo. Es una aplicación instalable (manifiesto y service worker, que guarda solo el cascarón: nunca datos de la API).
+
+Variables nuevas en `backend/.env.example`: `ALMACEN_ARCHIVOS`, `ARCHIVOS_DIR`, `S3_*` y `PROXY_HEADER` (cabecera con la IP real del cliente detrás de un proxy de confianza, para la auditoría).
 
 ### Frontend
 
