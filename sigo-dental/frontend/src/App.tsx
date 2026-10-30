@@ -5,6 +5,9 @@ import { AREAS, rutaDeArea } from './config/permisos';
 import { AuthProvider } from './context/AuthContext';
 import AgendaPage from './pages/AgendaPage';
 import AreaRolPage from './pages/AreaRolPage';
+import CobroDetallePage from './pages/CobroDetallePage';
+import CobroFormPage from './pages/CobroFormPage';
+import CobrosPage from './pages/CobrosPage';
 import ConfirmarCitaPage from './pages/ConfirmarCitaPage';
 import CatalogosPage from './pages/CatalogosPage';
 import HealthPage from './pages/HealthPage';
@@ -36,6 +39,13 @@ const App = () => (
             <Route element={<RutaProtegida roles={['recepcionista']} />}>
               <Route path="pacientes/nuevo" element={<PacienteFormPage />} />
               <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
+            </Route>
+            <Route element={<RutaProtegida roles={['recepcionista', 'auditor']} />}>
+              <Route path="cobros" element={<CobrosPage />} />
+              <Route path="cobros/:id" element={<CobroDetallePage />} />
+            </Route>
+            <Route element={<RutaProtegida roles={['recepcionista']} />}>
+              <Route path="cobros/nuevo" element={<CobroFormPage />} />
             </Route>
             {AREAS.map((area) => (
               <Route key={area.slug} element={<RutaProtegida roles={[area.rol]} />}>

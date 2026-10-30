@@ -1,8 +1,15 @@
 // El dinero viaja siempre en centavos enteros; solo se convierte al mostrarlo o al leerlo de un formulario.
-// La moneda es configurable en el plan (decisión de país pendiente): por ahora dólares.
-const FORMATO = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
+// La moneda es un parámetro del sistema (decisión de país pendiente): por defecto dólares.
+const FORMATOS = new Map<string, Intl.NumberFormat>();
 
-export const formatearDinero = (centavos: number) => FORMATO.format(centavos / 100);
+export function formatearDinero(centavos: number, moneda = 'USD') {
+  let formato = FORMATOS.get(moneda);
+  if (!formato) {
+    formato = new Intl.NumberFormat('es-EC', { style: 'currency', currency: moneda });
+    FORMATOS.set(moneda, formato);
+  }
+  return formato.format(centavos / 100);
+}
 
 // Convierte "12", "12.5" o "12,50" a centavos; devuelve null si no es un importe válido.
 export function aCentavos(texto: string): number | null {

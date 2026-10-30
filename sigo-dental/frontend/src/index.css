@@ -157,3 +157,36 @@
 .app-layout {
   height: 100dvh;
 }
+
+/* Comprobante impreso: solo el contenido, en blanco y negro y sin el marco de la aplicación. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  body::before,
+  body::after,
+  header,
+  aside,
+  .no-imprimir {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block;
+  }
+
+  .app-layout main {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .comprobante,
+  .comprobante * {
+    color: #000 !important;
+    border-color: #000 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+}

@@ -142,6 +142,11 @@ const DetalleCita = ({ id, rol, alReprogramar, alCambiar, alCerrar }: DetalleCit
           {rol === 'recepcionista' && sePuedeReprogramar(cita.estado) && (
             <Boton variante="secundario" onClick={() => alReprogramar(cita)}>Reprogramar</Boton>
           )}
+          {rol === 'recepcionista' && cita.estado === 'atendido' && (
+            <Link className="inline-flex min-h-11 items-center text-chip-acento-texto underline" to={`/cobros/nuevo?cita=${cita.id}`}>
+              Cobrar esta cita
+            </Link>
+          )}
           <Link className="inline-flex min-h-11 items-center text-chip-acento-texto underline" to={`/pacientes/${cita.paciente_id}`}>
             Abrir expediente
           </Link>
