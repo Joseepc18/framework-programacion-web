@@ -5,6 +5,7 @@ import { AREAS, rutaDeArea } from './config/permisos';
 import { AuthProvider } from './context/AuthContext';
 import AgendaPage from './pages/AgendaPage';
 import AreaRolPage from './pages/AreaRolPage';
+import ConfirmarCitaPage from './pages/ConfirmarCitaPage';
 import CatalogosPage from './pages/CatalogosPage';
 import HealthPage from './pages/HealthPage';
 import HomePage from './pages/HomePage';
@@ -19,6 +20,7 @@ const App = () => (
     <BrowserRouter>
       <Routes>
         <Route path="login" element={<LoginPage />} />
+        <Route path="confirmar" element={<ConfirmarCitaPage />} />
         <Route element={<RutaProtegida />}>
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />

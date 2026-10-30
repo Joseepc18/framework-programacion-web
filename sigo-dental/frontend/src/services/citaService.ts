@@ -80,3 +80,23 @@ export const reprogramarCita = (id: number, datos: DatosCita) =>
 
 export const cambiarEstadoCita = (id: number, estado: EstadoCita, motivo = '') =>
   apiFetch<CitaDetalle>(`/api/citas/${id}/estado`, { method: 'POST', body: JSON.stringify({ estado, motivo }) });
+
+export interface Notificacion {
+  id: number;
+  tipo: 'confirmacion' | 'recordatorio_48h' | 'recordatorio_24h';
+  canal: 'whatsapp' | 'sms' | 'email';
+  destino: string;
+  mensaje: string;
+  estado: 'pendiente' | 'enviada' | 'fallida';
+  detalle: string;
+  vigente: boolean;
+  creado_en: string;
+  enviado_en: string | null;
+}
+
+// Bitácora de mensajes de la cita (solo la recepción).
+export const listarNotificaciones = (citaId: number) => apiFetch<Notificacion[]>(`/api/citas/${citaId}/notificaciones`);
+
+// Pública: el paciente confirma desde el enlace que recibe, sin cuenta. Solo devuelve el estado y la hora.
+export const confirmarPorEnlace = (token: string) =>
+  apiFetch<{ estado: EstadoCita; inicio: string }>('/api/citas/confirmar', { method: 'POST', body: JSON.stringify({ token }) });

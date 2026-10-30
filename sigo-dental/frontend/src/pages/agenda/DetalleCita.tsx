@@ -7,7 +7,7 @@ import { ETIQUETA_ACCION, ETIQUETA_ESTADO, estadosSiguientes, sePuedeReprogramar
 import type { Rol } from '../../config/permisos';
 import { useAccion } from '../../hooks/useAccion';
 import { useCarga } from '../../hooks/useCarga';
-import { cambiarEstadoCita, obtenerCita, type CitaDetalle, type EstadoCita } from '../../services/citaService';
+import { cambiarEstadoCita, listarNotificaciones, obtenerCita, type CitaDetalle, type EstadoCita, type Notificacion } from '../../services/citaService';
 import { horaLocal } from '../../utils/fechas';
 
 interface DetalleCitaProps {
@@ -20,6 +20,39 @@ interface DetalleCitaProps {
 
 const formatoFecha = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' });
 const formatoMarca = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+const ETIQUETA_TIPO: Record<Notificacion['tipo'], string> = {
+  confirmacion: 'Confirmación',
+  recordatorio_48h: 'Recordatorio de 48 h',
+  recordatorio_24h: 'Recordatorio de 24 h',
+};
+const ETIQUETA_CANAL_NOTIF: Record<Notificacion['canal'], string> = { whatsapp: 'WhatsApp', sms: 'SMS', email: 'Correo' };
+const ETIQUETA_ESTADO_NOTIF: Record<Notificacion['estado'], string> = { pendiente: 'Pendiente', enviada: 'Enviada', fallida: 'Fallida' };
+
+// Bitácora de mensajes al paciente por esta cita; la API solo la entrega a la recepción.
+const BitacoraNotificaciones = ({ citaId, version }: { citaId: number; version: string }) => {
+  const { datos, error } = useCarga(() => listarNotificaciones(citaId), `notificaciones-${citaId}-${version}`);
+  return (
+    <>
+      <h3 className="mt-6 text-cuerpo font-semibold">Notificaciones al paciente</h3>
+      {error && <Aviso>{error}</Aviso>}
+      {datos && datos.length === 0 && <p className="mt-2 text-etiqueta text-texto-suave">Aún no se envió ningún mensaje.</p>}
+      <ul className="mt-2 space-y-2 text-etiqueta">
+        {(datos ?? []).map((n) => (
+          <li key={n.id} className={`rounded-control border border-vidrio-borde p-3 ${n.vigente ? '' : 'opacity-60'}`}>
+            <p>
+              <span className="font-medium">{ETIQUETA_TIPO[n.tipo]}</span> · {ETIQUETA_CANAL_NOTIF[n.canal]} a <span className="font-mono">{n.destino || 'sin destino'}</span> ·{' '}
+              <span className={n.estado === 'fallida' ? 'text-alerta-valor' : ''}>{ETIQUETA_ESTADO_NOTIF[n.estado]}</span>
+              {!n.vigente && ' · reemplazada por una reprogramación'}
+            </p>
+            {n.detalle && <p className="text-alerta-valor">{n.detalle}</p>}
+            <p className="mt-1 break-words text-texto-suave">{n.mensaje}</p>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+};
 
 const DetalleCita = ({ id, rol, alReprogramar, alCambiar, alCerrar }: DetalleCitaProps) => {
   const { datos: cita, error, recargar } = useCarga(() => obtenerCita(id), `cita-${id}`);
@@ -114,6 +147,8 @@ const DetalleCita = ({ id, rol, alReprogramar, alCambiar, alCerrar }: DetalleCit
           </Link>
         </div>
       )}
+
+      {rol === 'recepcionista' && <BitacoraNotificaciones citaId={cita.id} version={`${cita.estado}|${cita.inicio}`} />}
 
       <h3 className="mt-6 text-cuerpo font-semibold">Historial</h3>
       <ol className="mt-2 space-y-1 text-etiqueta text-texto-suave">
