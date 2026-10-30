@@ -95,3 +95,4 @@ El menú tiene dos páginas: Inicio y Estado del sistema (`/estado`), que consul
 ## Documentación
 
 - Arquitectura: [docs/architecture.md](docs/architecture.md)
+- Dirección visual: [docs/diseno.md](docs/diseno.md)
