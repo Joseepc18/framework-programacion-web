@@ -65,6 +65,10 @@ func registrarCitas(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
 	app.Post("/api/citas", autenticado, recepcion, cit.CrearCita)
 	app.Put("/api/citas/:id", autenticado, recepcion, cit.ReprogramarCita)
 	app.Post("/api/citas/:id/estado", autenticado, consulta, cit.CambiarEstado)
+	// La bitácora de mensajes la ve solo la recepción.
+	app.Get("/api/citas/:id/notificaciones", autenticado, recepcion, cit.ListarNotificaciones)
+	// Público a propósito: el paciente confirma desde el enlace que recibe, sin cuenta. Lo protege la firma del token.
+	app.Post("/api/citas/confirmar", cit.ConfirmarPorEnlace)
 }
 
 // registrarPacientes declara las rutas de pacientes: la recepción registra y modifica la ficha,

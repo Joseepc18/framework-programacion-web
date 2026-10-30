@@ -25,7 +25,7 @@ func appDePrueba(t *testing.T) *fiber.App {
 		Auth:      auth,
 		Catalogo:  controllers.NuevoCatalogoController(nil),
 		Pacientes: controllers.NuevoPacientesController(nil),
-		Citas:     controllers.NuevoCitasController(nil),
+		Citas:     controllers.NuevoCitasController(nil, nil, secretoPrueba),
 		JWTSecret: secretoPrueba,
 	})
 	return app
@@ -198,6 +198,9 @@ func TestPermisosDeCitas(t *testing.T) {
 		{models.RolOdontologo, "PUT", "/api/citas/1"},
 		{models.RolAsistente, "PUT", "/api/citas/1"},
 		{models.RolAuditor, "POST", "/api/citas/1/estado"},
+		{models.RolOdontologo, "GET", "/api/citas/1/notificaciones"},
+		{models.RolAsistente, "GET", "/api/citas/1/notificaciones"},
+		{models.RolAuditor, "GET", "/api/citas/1/notificaciones"},
 		{models.RolAdminTI, "POST", "/api/citas/1/estado"},
 	}
 	for _, p := range prohibidos {

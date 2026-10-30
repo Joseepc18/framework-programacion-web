@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"sigo-dental-backend/models"
+	"sigo-dental-backend/notificaciones"
 )
 
 // CitaRepository es el contrato de la capa de datos de la agenda.
@@ -27,16 +28,29 @@ type CitaRepository interface {
 	// CitasSimultaneasDelProfesional cuenta las citas vigentes del profesional que se cruzan con el rango.
 	CitasSimultaneasDelProfesional(ctx context.Context, profesionalID int, inicio, fin time.Time, excluirID int) (int, error)
 	HorarioAgenda(ctx context.Context) (models.HorarioAgenda, error)
+	// ListarNotificaciones devuelve la bitácora de mensajes de la cita.
+	ListarNotificaciones(ctx context.Context, citaID int) ([]models.Notificacion, error)
+}
+
+// AvisosDeCita es lo que el controlador necesita del servicio de notificaciones (F1-4). Es opcional: sin él
+// la agenda funciona igual, solo que no se envían avisos.
+type AvisosDeCita interface {
+	CitaAgendada(ctx context.Context, citaID int)
+	CitaReprogramada(ctx context.Context, citaID int)
 }
 
 // CitasController atiende las rutas de la agenda con el repositorio inyectado.
 type CitasController struct {
-	repo CitaRepository
+	repo   CitaRepository
+	avisos AvisosDeCita
+	// secreto firma y verifica los enlaces de confirmación.
+	secreto []byte
+	ahora   func() time.Time
 }
 
-// NuevoCitasController construye el controlador de la agenda.
-func NuevoCitasController(repo CitaRepository) *CitasController {
-	return &CitasController{repo: repo}
+// NuevoCitasController construye el controlador de la agenda. avisos puede ser nil.
+func NuevoCitasController(repo CitaRepository, avisos AvisosDeCita, secreto []byte) *CitasController {
+	return &CitasController{repo: repo, avisos: avisos, secreto: secreto, ahora: time.Now}
 }
 
 const (
@@ -237,6 +251,9 @@ func (ctrl *CitasController) CrearCita(c *fiber.Ctx) error {
 	if err != nil {
 		return errorAgenda(c, err)
 	}
+	if ctrl.avisos != nil {
+		ctrl.avisos.CitaAgendada(c.Context(), id)
+	}
 	detalle, err := ctrl.repo.ObtenerCita(c.Context(), id)
 	if err != nil {
 		return errorDominio(c, err)
@@ -269,6 +286,9 @@ func (ctrl *CitasController) ReprogramarCita(c *fiber.Ctx) error {
 
 	if err := ctrl.repo.ReprogramarCita(c.Context(), id, datos, usuarioDeLaPeticion(c)); err != nil {
 		return errorAgenda(c, err)
+	}
+	if ctrl.avisos != nil {
+		ctrl.avisos.CitaReprogramada(c.Context(), id)
 	}
 	detalle, err := ctrl.repo.ObtenerCita(c.Context(), id)
 	if err != nil {
@@ -323,4 +343,57 @@ func (ctrl *CitasController) CambiarEstado(c *fiber.Ctx) error {
 		return errorDominio(c, err)
 	}
 	return c.JSON(actualizada)
+}
+
+// ListarNotificaciones responde GET /api/citas/:id/notificaciones con la bitácora de mensajes de la cita.
+func (ctrl *CitasController) ListarNotificaciones(c *fiber.Ctx) error {
+	id, ok := idDeRuta(c)
+	if !ok {
+		return errorCliente(c, fiber.StatusBadRequest, "Identificador inválido")
+	}
+	if _, err := ctrl.repo.ObtenerCita(c.Context(), id); err != nil {
+		return errorDominio(c, err)
+	}
+	lista, err := ctrl.repo.ListarNotificaciones(c.Context(), id)
+	if err != nil {
+		return errorInterno(c, err)
+	}
+	return c.JSON(lista)
+}
+
+// ConfirmarPorEnlace responde POST /api/citas/confirmar con {"token": "..."}: es público porque el paciente no
+// tiene cuenta, y por eso solo devuelve el estado y la hora, nunca datos clínicos. El enlace debe estar firmado,
+// corresponder al horario actual de la cita y no haber vencido (la cita no ha empezado). Repetirlo es inofensivo.
+func (ctrl *CitasController) ConfirmarPorEnlace(c *fiber.Ctx) error {
+	var cuerpo struct {
+		Token string `json:"token"`
+	}
+	if err := c.BodyParser(&cuerpo); err != nil {
+		return cuerpoInvalido(c)
+	}
+	id, inicio, err := notificaciones.LeerToken(ctrl.secreto, cuerpo.Token)
+	if err != nil {
+		return errorCliente(c, fiber.StatusBadRequest, "El enlace de confirmación no es válido")
+	}
+	cita, err := ctrl.repo.ObtenerCita(c.Context(), id)
+	if err != nil {
+		return errorCliente(c, fiber.StatusBadRequest, "El enlace de confirmación no es válido")
+	}
+	if !cita.Inicio.Equal(inicio) || !ctrl.ahora().Before(cita.Inicio) {
+		return errorCliente(c, fiber.StatusGone, "Este enlace ya no está vigente: la cita cambió de horario o ya pasó. Comunícate con la clínica")
+	}
+
+	respuesta := fiber.Map{"estado": cita.Estado, "inicio": cita.Inicio}
+	switch cita.Estado {
+	case models.EstadoConfirmado:
+		return c.JSON(respuesta)
+	case models.EstadoProgramado:
+		motivo := "Confirmada por el paciente desde el enlace"
+		if err := ctrl.repo.CambiarEstado(c.Context(), id, models.EstadoProgramado, models.EstadoConfirmado, motivo, 0); err != nil {
+			return errorAgenda(c, err)
+		}
+		respuesta["estado"] = models.EstadoConfirmado
+		return c.JSON(respuesta)
+	}
+	return errorCliente(c, fiber.StatusConflict, "La cita ya no se puede confirmar. Comunícate con la clínica")
 }

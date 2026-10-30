@@ -13,13 +13,17 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"sigo-dental-backend/models"
+	"sigo-dental-backend/notificaciones"
 )
+
+var secretoDePrueba = []byte("secreto-de-prueba-con-32-bytes-o-mas")
 
 type repoCitas struct {
 	CitaRepository
 	errCrear       error
 	errCambio      error
 	estadoActual   string
+	inicioActual   time.Time
 	simultaneas    int
 	creada         models.DatosCita
 	filtro         models.FiltroCitas
@@ -46,7 +50,7 @@ func (r *repoCitas) ObtenerCita(_ context.Context, id int) (models.CitaDetalle, 
 	if estado == "" {
 		estado = models.EstadoProgramado
 	}
-	return models.CitaDetalle{Cita: models.Cita{ID: id, Estado: estado}, Historial: []models.CambioEstado{}}, nil
+	return models.CitaDetalle{Cita: models.Cita{ID: id, Estado: estado, Inicio: r.inicioActual}, Historial: []models.CambioEstado{}}, nil
 }
 
 func (r *repoCitas) CambiarEstado(_ context.Context, _ int, _, hasta, motivo string, _ int) error {
@@ -58,13 +62,21 @@ func (r *repoCitas) CitasSimultaneasDelProfesional(context.Context, int, time.Ti
 	return r.simultaneas, nil
 }
 
+func (r *repoCitas) ListarNotificaciones(context.Context, int) ([]models.Notificacion, error) {
+	return []models.Notificacion{}, nil
+}
+
 func (r *repoCitas) ListarCitas(_ context.Context, f models.FiltroCitas) ([]models.Cita, error) {
 	r.filtro = f
 	return []models.Cita{}, nil
 }
 
+// ahoraDePrueba fija el reloj del controlador; las citas de los enlaces empiezan 3 días después.
+var ahoraDePrueba = time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+
 func appCitas(repo *repoCitas, rol string) *fiber.App {
-	ctrl := NuevoCitasController(repo)
+	ctrl := NuevoCitasController(repo, nil, secretoDePrueba)
+	ctrl.ahora = func() time.Time { return ahoraDePrueba }
 	app := fiber.New()
 	app.Use(func(c *fiber.Ctx) error {
 		c.Locals("rol", rol)
@@ -75,6 +87,7 @@ func appCitas(repo *repoCitas, rol string) *fiber.App {
 	app.Post("/api/citas", ctrl.CrearCita)
 	app.Put("/api/citas/:id", ctrl.ReprogramarCita)
 	app.Post("/api/citas/:id/estado", ctrl.CambiarEstado)
+	app.Post("/api/citas/confirmar", ctrl.ConfirmarPorEnlace)
 	return app
 }
 
@@ -278,5 +291,67 @@ func TestReprogramarCita(t *testing.T) {
 				t.Errorf("estado = %d, se esperaba %d", estado, caso.estado)
 			}
 		})
+	}
+}
+
+func TestConfirmarPorEnlace(t *testing.T) {
+	inicio := ahoraDePrueba.Add(72 * time.Hour)
+	token := func(clave []byte, id int, quien time.Time) string {
+		return `{"token":"` + notificaciones.TokenDeConfirmacion(clave, id, quien) + `"}`
+	}
+	casos := []struct {
+		nombre, cuerpo, estadoCita string
+		inicioCita                 time.Time
+		esperado                   int
+		cambia                     bool
+	}{
+		{"enlace válido confirma", token(secretoDePrueba, 9, inicio), "programado", inicio, 200, true},
+		{"confirmar dos veces es inofensivo", token(secretoDePrueba, 9, inicio), "confirmado", inicio, 200, false},
+		{"firmado con otra clave", token([]byte("otra-clave-distinta-de-32-bytes-o-mas!!"), 9, inicio), "programado", inicio, 400, false},
+		{"token basura", `{"token":"x.y"}`, "programado", inicio, 400, false},
+		{"sin token", `{}`, "programado", inicio, 400, false},
+		{"la cita se reprogramó", token(secretoDePrueba, 9, inicio), "programado", inicio.Add(24 * time.Hour), 410, false},
+		{"la cita ya pasó", token(secretoDePrueba, 9, ahoraDePrueba.Add(-time.Hour)), "programado", ahoraDePrueba.Add(-time.Hour), 410, false},
+		{"la cita está cancelada", token(secretoDePrueba, 9, inicio), "cancelado", inicio, 409, false},
+		{"la cita ya se atendió", token(secretoDePrueba, 9, inicio), "atendido", inicio, 409, false},
+	}
+	for _, caso := range casos {
+		t.Run(caso.nombre, func(t *testing.T) {
+			repo := &repoCitas{estadoActual: caso.estadoCita, inicioActual: caso.inicioCita}
+			// Es una ruta pública: se prueba sin rol ni usuario en la petición.
+			ctrl := NuevoCitasController(repo, nil, secretoDePrueba)
+			ctrl.ahora = func() time.Time { return ahoraDePrueba }
+			app := fiber.New()
+			app.Post("/api/citas/confirmar", ctrl.ConfirmarPorEnlace)
+
+			if estado := enviar(t, app, "POST", "/api/citas/confirmar", caso.cuerpo); estado != caso.esperado {
+				t.Errorf("estado = %d, se esperaba %d", estado, caso.esperado)
+			}
+			if cambio := repo.estadoGuardado == "confirmado"; cambio != caso.cambia {
+				t.Errorf("cambió a confirmado = %v, se esperaba %v", cambio, caso.cambia)
+			}
+		})
+	}
+}
+
+func TestLaRespuestaDelEnlaceNoFiltraDatosDelPaciente(t *testing.T) {
+	inicio := ahoraDePrueba.Add(72 * time.Hour)
+	ctrl := NuevoCitasController(&repoCitas{estadoActual: "programado", inicioActual: inicio}, nil, secretoDePrueba)
+	ctrl.ahora = func() time.Time { return ahoraDePrueba }
+	app := fiber.New()
+	app.Post("/api/citas/confirmar", ctrl.ConfirmarPorEnlace)
+
+	req := httptest.NewRequest("POST", "/api/citas/confirmar", strings.NewReader(`{"token":"`+notificaciones.TokenDeConfirmacion(secretoDePrueba, 9, inicio)+`"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cuerpo map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&cuerpo); err != nil {
+		t.Fatal(err)
+	}
+	if len(cuerpo) != 2 || cuerpo["estado"] != "confirmado" || cuerpo["inicio"] == nil {
+		t.Errorf("la respuesta pública debe traer solo estado e inicio: %v", cuerpo)
 	}
 }

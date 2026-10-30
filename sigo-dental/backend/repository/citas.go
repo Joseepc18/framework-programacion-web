@@ -70,8 +70,8 @@ func (pg *PostgresRepository) ObtenerCita(ctx context.Context, id int) (models.C
 	}
 
 	rows, err := pg.db.Query(ctx,
-		`SELECT COALESCE(h.estado_anterior, ''), h.estado_nuevo, h.motivo, u.nombre, h.creado_en
-		   FROM cita_historial h JOIN usuarios u ON u.id = h.usuario_id
+		`SELECT COALESCE(h.estado_anterior, ''), h.estado_nuevo, h.motivo, COALESCE(u.nombre, 'Paciente (enlace de confirmación)'), h.creado_en
+		   FROM cita_historial h LEFT JOIN usuarios u ON u.id = h.usuario_id
 		  WHERE h.cita_id = $1 ORDER BY h.id`, id)
 	if err != nil {
 		return models.CitaDetalle{}, err
@@ -170,7 +170,7 @@ func (pg *PostgresRepository) ReprogramarCita(ctx context.Context, id int, d mod
 	return traducirError(err)
 }
 
-// CambiarEstado mueve la cita de un estado a otro y lo deja en el historial. La actualización exige que
+// CambiarEstado (usuarioID 0 = el propio paciente, desde su enlace) mueve la cita de un estado a otro y lo deja en el historial. La actualización exige que
 // la cita siga en el estado de origen: si otra persona la cambió antes, devuelve ErrConflicto.
 func (pg *PostgresRepository) CambiarEstado(ctx context.Context, id int, desde, hasta, motivo string, usuarioID int) error {
 	err := pgx.BeginFunc(ctx, pg.db, func(tx pgx.Tx) error {
@@ -184,7 +184,7 @@ func (pg *PostgresRepository) CambiarEstado(ctx context.Context, id int, desde, 
 		}
 		_, err = tx.Exec(ctx,
 			`INSERT INTO cita_historial (cita_id, estado_anterior, estado_nuevo, motivo, usuario_id)
-			 VALUES ($1, $2, $3, $4, $5)`, id, desde, hasta, motivo, usuarioID)
+			 VALUES ($1, $2, $3, $4, NULLIF($5, 0))`, id, desde, hasta, motivo, usuarioID)
 		return err
 	})
 	return traducirError(err)
