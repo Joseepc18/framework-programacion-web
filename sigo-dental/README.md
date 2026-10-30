@@ -65,9 +65,21 @@ Para levantar también la API en contenedor: `docker compose up --build`.
 PostgreSQL ejecuta los scripts de `backend/database/` en orden alfabético, **solo la primera vez que se crea el volumen**:
 
 - `001_usuarios_roles.sql`: tablas `roles` (con los cinco roles) y `usuarios`.
+- `002_catalogo.sql`: catálogos de la clínica (sillones, profesionales, procedimientos con precio en centavos, parámetros como moneda, zona horaria y horario de agenda).
+- `003_pacientes.sql`: pacientes, número de historia correlativo y anamnesis con alertas médicas.
+- `004_agenda.sql`: citas, su historial de estados y la regla RN-03 (un sillón no puede tener dos citas que se solapen, garantizada con una restricción `EXCLUDE` de PostgreSQL).
+- `005_notificaciones.sql`: bitácora de avisos de cita (un solo mensaje vigente por tipo).
+- `006_facturacion.sql`: cobros, líneas, pagos, anulaciones y el contador de comprobantes sin huecos.
 - `900_datos_prueba.sql`: un usuario por rol con contraseña bcrypt, solo para desarrollo. Las credenciales de prueba están en ese archivo.
+- `901_`, `902_` y `903_`: catálogo, pacientes y citas de ejemplo, solo para desarrollo.
 
-Para aplicar un script nuevo en local, o recrear la base desde cero (borra sus datos):
+Para aplicar un script nuevo en una base ya creada (sin borrarla), por ejemplo:
+
+```bash
+docker exec -i sigo-dental-db psql -v ON_ERROR_STOP=1 -q -U sigo_dental -d sigo_dental < backend/database/006_facturacion.sql
+```
+
+Para recrear la base desde cero (borra sus datos):
 
 ```bash
 docker compose down -v
@@ -75,6 +87,20 @@ docker compose up -d postgres redis
 ```
 
 En Neon se aplican a mano los scripts `0xx` (por ejemplo con `psql "$DATABASE_URL" -f database/001_usuarios_roles.sql`); los `9xx` son datos de prueba y no se cargan.
+
+#### Módulos de la Fase 1
+
+| Módulo | Quién lo usa | Endpoints principales |
+| --- | --- | --- |
+| Catálogos (sillones, profesionales, procedimientos, parámetros) | lectura: todos los roles autenticados; escritura: `admin_ti` | `/api/sillones`, `/api/profesionales`, `/api/procedimientos`, `/api/parametros`, `/api/catalogo/:recurso` |
+| Pacientes y anamnesis | consulta: recepción, odontólogo y asistente; alta y edición: recepción; anamnesis: personal clínico | `/api/pacientes`, `/api/pacientes/:id/anamnesis` |
+| Agenda | consulta: recepción, odontólogo y asistente; crear y reprogramar: recepción; estados: según el rol | `/api/citas`, `/api/citas/:id/estado`, `/api/agenda/horario` |
+| Notificaciones | bitácora: recepción; confirmación por enlace: pública | `/api/citas/:id/notificaciones`, `POST /api/citas/confirmar` |
+| Cobros | consulta: recepción y auditor; cobrar, registrar pagos y anular: recepción | `/api/cobros`, `/api/cobros/:id/pagos`, `/api/cobros/:id/anular` |
+
+Reglas que conviene conocer: el dinero se guarda en centavos enteros y el servidor calcula siempre precios y totales; nada se borra (los pacientes y catálogos se desactivan y los cobros se anulan con motivo); las horas se guardan en UTC y se muestran en la zona horaria de la clínica (`America/Guayaquil`); el número de comprobante (`C-000001`…) no deja huecos aunque haya cobros simultáneos; un cobro no admite pagos que superen su total.
+
+Los avisos de cita (confirmación inmediata y recordatorios 48 h y 24 h antes) salen por un `Notificador` simulado: se registran en la bitácora pero no se envía nada real hasta tener las credenciales de un proveedor de WhatsApp o SMS. Variables en `backend/.env.example`: `NOTIFICADOR`, `FRONTEND_URL` (arma el enlace de confirmación) y `NOTIFICACIONES_INTERVALO`. El enlace lleva un token firmado con `JWT_SECRET` y deja de valer si la cita se reprograma o ya empezó.
 
 ### Frontend
 
