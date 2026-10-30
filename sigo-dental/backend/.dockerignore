@@ -1,0 +1,8 @@
+# Archivos que no deben entrar a la imagen: credenciales, binarios y metadatos locales.
+.env
+.git
+.gitignore
+*.exe
+*.log
+Dockerfile
+docker-compose.yml

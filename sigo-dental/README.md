@@ -6,7 +6,7 @@ Proyecto de la materia Framework de Programación Web (UPSE). Se construye a par
 
 ## Estado
 
-Sin código todavía. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+En construcción: existe el esqueleto del backend (`backend/`) con el endpoint `GET /api/health`; el frontend aún no. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
 
 ## Alcance
 
@@ -25,7 +25,30 @@ El mismo de la Práctica 03:
 
 ## Instalación, ejecución y pruebas
 
-TODO: se documentan cuando exista el código.
+### Backend
+
+Requiere Go 1.26 y Docker. Desde `backend/`:
+
+```bash
+cp .env.example .env          # ajustar valores si es necesario
+docker compose up -d postgres redis
+go run .                      # API en http://localhost:3001
+go test ./...
+```
+
+Comprobar el estado de PostgreSQL y Redis:
+
+```bash
+curl http://localhost:3001/api/health
+```
+
+Responde `200` con `status: ok`, `200` con `status: degraded` si Redis no responde, o `503` si PostgreSQL no responde.
+
+Para levantar también la API en contenedor: `docker compose up --build`.
+
+### Frontend
+
+TODO: se documenta cuando exista el código.
 
 ## Documentación
 
