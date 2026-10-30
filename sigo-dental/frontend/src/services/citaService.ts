@@ -47,6 +47,8 @@ export interface DatosCita {
   notas: string;
   inicio: string;
   fin: string;
+  // Tarea aprobada de un presupuesto que esta cita atiende (RF-08); solo al agendar.
+  presupuesto_item_id?: number;
 }
 
 export interface HorarioAgenda {

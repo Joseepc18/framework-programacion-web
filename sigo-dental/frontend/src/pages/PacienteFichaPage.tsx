@@ -12,6 +12,7 @@ import PestanaConsentimientos from './expediente/PestanaConsentimientos';
 import PestanaEvolucion from './expediente/PestanaEvolucion';
 import PestanaOdontograma from './expediente/PestanaOdontograma';
 import PestanaPeriodonto from './expediente/PestanaPeriodonto';
+import PestanaPresupuestos from './expediente/PestanaPresupuestos';
 import PestanaRecetas from './expediente/PestanaRecetas';
 import PestanaSignos from './expediente/PestanaSignos';
 import { actualizarAnamnesis, ETIQUETA_CANAL, obtenerPaciente, type Anamnesis, type PacienteDetalle } from '../services/pacienteService';
@@ -107,22 +108,26 @@ const PestanaAnamnesis = ({ p, condiciones, puedeEditar, alGuardar }: PestanaAna
 };
 
 // Pestañas del expediente. Las clínicas solo las ven el odontólogo y el asistente (la recepción ve datos y anamnesis).
+const CLINICOS = ['odontologo', 'asistente'] as const;
+
 interface Pestana {
   id: string;
   etiqueta: string;
-  clinica?: boolean;
+  // Roles que ven la pestaña; sin lista, todos los que abren el expediente.
+  roles?: readonly string[];
 }
 
 const PESTANAS: readonly Pestana[] = [
   { id: 'datos', etiqueta: 'Datos del paciente' },
   { id: 'anamnesis', etiqueta: 'Anamnesis' },
-  { id: 'odontograma', etiqueta: 'Odontograma', clinica: true },
-  { id: 'evolucion', etiqueta: 'Evolución', clinica: true },
-  { id: 'consentimientos', etiqueta: 'Consentimientos', clinica: true },
-  { id: 'recetas', etiqueta: 'Recetas', clinica: true },
-  { id: 'periodonto', etiqueta: 'Periodontograma', clinica: true },
-  { id: 'signos', etiqueta: 'Signos vitales', clinica: true },
-  { id: 'archivos', etiqueta: 'Archivos', clinica: true },
+  { id: 'odontograma', etiqueta: 'Odontograma', roles: CLINICOS },
+  { id: 'evolucion', etiqueta: 'Evolución', roles: CLINICOS },
+  { id: 'consentimientos', etiqueta: 'Consentimientos', roles: CLINICOS },
+  { id: 'recetas', etiqueta: 'Recetas', roles: CLINICOS },
+  { id: 'presupuestos', etiqueta: 'Presupuestos', roles: ['odontologo', 'recepcionista'] },
+  { id: 'periodonto', etiqueta: 'Periodontograma', roles: CLINICOS },
+  { id: 'signos', etiqueta: 'Signos vitales', roles: CLINICOS },
+  { id: 'archivos', etiqueta: 'Archivos', roles: CLINICOS },
 ];
 
 // Expediente del paciente: cabecera con la alerta médica y pestañas por módulo. La pestaña activa viaja en la URL
@@ -135,7 +140,7 @@ const PacienteFichaPage = () => {
   const paciente = useCarga(() => obtenerPaciente(id), `ficha-${id}`);
   const condiciones = useCarga(() => listarSimples('condiciones-criticas'), 'condiciones-activas');
   const esClinico = usuario?.rol === 'odontologo' || usuario?.rol === 'asistente';
-  const visibles = PESTANAS.filter((t) => !t.clinica || esClinico);
+  const visibles = PESTANAS.filter((t) => !t.roles || t.roles.includes(usuario?.rol ?? ''));
   const activa = visibles.find((t) => t.id === parametros.get('tab'))?.id ?? 'datos';
 
   if (paciente.error) return <Aviso>{paciente.error}</Aviso>;
@@ -146,6 +151,8 @@ const PacienteFichaPage = () => {
     switch (activa) {
       case 'anamnesis':
         return <PestanaAnamnesis key={p.id} p={p} condiciones={condiciones.datos ?? []} puedeEditar={esClinico} alGuardar={paciente.recargar} />;
+      case 'presupuestos':
+        return <PestanaPresupuestos pacienteId={p.id} pacienteNombre={`${p.nombres} ${p.apellidos}`} />;
       case 'recetas':
         return <PestanaRecetas pacienteId={p.id} />;
       case 'consentimientos':

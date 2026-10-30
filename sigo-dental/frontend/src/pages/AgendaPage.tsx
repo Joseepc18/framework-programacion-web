@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Aviso, Boton, Campo, Casilla, Selector, Titulo } from '../components/ui';
 import { liberaSillon } from '../config/citas';
@@ -14,7 +15,7 @@ import FormularioCita from './agenda/FormularioCita';
 type Vista = 'dia' | 'semana';
 
 type Formulario =
-  | { tipo: 'nueva'; inicio: Date; sillonId?: number }
+  | { tipo: 'nueva'; inicio: Date; sillonId?: number; tarea?: { pacienteId: number; nombre: string; procedimientoId: number; itemId: number; minutos: number } }
   | { tipo: 'reprogramar'; cita: CitaDetalle };
 
 const formatoRango = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -32,7 +33,19 @@ const AgendaPage = () => {
   const [profesionalId, setProfesionalId] = useState(0);
   const [verInactivas, setVerInactivas] = useState(false);
   const [seleccion, setSeleccion] = useState<number | null>(null);
-  const [formulario, setFormulario] = useState<Formulario | null>(null);
+  // Al venir de las tareas de un presupuesto, la agenda abre el formulario con el paciente, el procedimiento y la duración cargados.
+  const [parametros, setParametros] = useSearchParams();
+  const [formulario, setFormulario] = useState<Formulario | null>(() => {
+    const pacienteId = Number(parametros.get('agendar'));
+    const itemId = Number(parametros.get('item'));
+    if (!pacienteId || !itemId) return null;
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    return {
+      tipo: 'nueva', inicio: new Date(manana.getFullYear(), manana.getMonth(), manana.getDate(), 9, 0),
+      tarea: { pacienteId, nombre: parametros.get('nombre') ?? '', procedimientoId: Number(parametros.get('procedimiento')) || 0, itemId, minutos: Number(parametros.get('min')) || 30 },
+    };
+  });
   const [aviso, setAviso] = useState('');
 
   const sillones = useCarga(() => listarSillones(), 'agenda-sillones');
@@ -73,9 +86,13 @@ const AgendaPage = () => {
   const titulo =
     vista === 'dia' ? formatoRango.format(ancla) : `${formatoDiaCorto.format(desde)} al ${formatoRango.format(sumarDias(hasta, -1))}`;
 
-  const cerrarFormulario = () => setFormulario(null);
+  const cerrarFormulario = () => {
+    setFormulario(null);
+    if (parametros.has('agendar')) setParametros({}, { replace: true });
+  };
   const alGuardar = (cita: CitaDetalle) => {
     setFormulario(null);
+    if (parametros.has('agendar')) setParametros({}, { replace: true });
     setSeleccion(cita.id);
     setAviso(cita.aviso ?? '');
     citas.recargar();
@@ -141,12 +158,16 @@ const AgendaPage = () => {
       {error && <Aviso>{error}</Aviso>}
       {aviso && <Aviso tipo="info">{aviso}</Aviso>}
 
-      {formulario && horario.datos && (
+      {formulario && horario.datos && sillones.datos && profesionales.datos && (
         <FormularioCita
           key={formulario.tipo === 'reprogramar' ? `r${formulario.cita.id}` : `n${formulario.inicio.getTime()}`}
           cita={formulario.tipo === 'reprogramar' ? formulario.cita : undefined}
           inicioSugerido={formulario.tipo === 'nueva' ? formulario.inicio : undefined}
           sillonSugerido={formulario.tipo === 'nueva' ? formulario.sillonId : undefined}
+          pacienteSugerido={formulario.tipo === 'nueva' && formulario.tarea ? { id: formulario.tarea.pacienteId, nombre: formulario.tarea.nombre } : undefined}
+          procedimientoSugerido={formulario.tipo === 'nueva' ? formulario.tarea?.procedimientoId : undefined}
+          duracionSugeridaMin={formulario.tipo === 'nueva' ? formulario.tarea?.minutos : undefined}
+          presupuestoItemId={formulario.tipo === 'nueva' ? formulario.tarea?.itemId : undefined}
           sillones={listaSillones}
           profesionales={profesionales.datos ?? []}
           alGuardar={alGuardar}

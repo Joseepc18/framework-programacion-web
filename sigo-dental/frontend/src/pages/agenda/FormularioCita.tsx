@@ -13,6 +13,10 @@ interface FormularioCitaProps {
   inicioSugerido?: Date;
   sillonSugerido?: number;
   pacienteSugerido?: { id: number; nombre: string };
+  // Al agendar una tarea de un presupuesto: el procedimiento, su duración y el ítem que se atiende.
+  procedimientoSugerido?: number;
+  duracionSugeridaMin?: number;
+  presupuestoItemId?: number;
   sillones: Sillon[];
   profesionales: Profesional[];
   alGuardar: (cita: CitaDetalle) => void;
@@ -24,6 +28,9 @@ const FormularioCita = ({
   inicioSugerido,
   sillonSugerido,
   pacienteSugerido,
+  procedimientoSugerido,
+  duracionSugeridaMin,
+  presupuestoItemId,
   sillones,
   profesionales,
   alGuardar,
@@ -33,7 +40,7 @@ const FormularioCita = ({
   const procedimientos = useCarga(() => listarProcedimientos(), 'procedimientos-activos');
 
   const inicio = cita ? new Date(cita.inicio) : (inicioSugerido ?? new Date());
-  const fin = cita ? new Date(cita.fin) : new Date(inicio.getTime() + 30 * 60_000);
+  const fin = cita ? new Date(cita.fin) : new Date(inicio.getTime() + (duracionSugeridaMin ?? 30) * 60_000);
 
   const [texto, setTexto] = useState('');
   const [busqueda, setBusqueda] = useState('');
@@ -43,7 +50,7 @@ const FormularioCita = ({
   const [horaFin, setHoraFin] = useState(horaLocal(fin));
   const [profesionalId, setProfesionalId] = useState(cita?.profesional_id ?? profesionales[0]?.id ?? 0);
   const [sillonId, setSillonId] = useState(cita?.sillon_id ?? sillonSugerido ?? sillones[0]?.id ?? 0);
-  const [procedimientoId, setProcedimientoId] = useState(cita?.procedimiento_id ?? 0);
+  const [procedimientoId, setProcedimientoId] = useState(cita?.procedimiento_id ?? procedimientoSugerido ?? 0);
   const [motivo, setMotivo] = useState(cita?.motivo ?? '');
   const [notas, setNotas] = useState(cita?.notas ?? '');
 
@@ -76,6 +83,7 @@ const FormularioCita = ({
       notas,
       inicio: combinarFechaHora(fecha, horaInicio).toISOString(),
       fin: combinarFechaHora(fecha, horaFin).toISOString(),
+      presupuesto_item_id: cita ? undefined : presupuestoItemId,
     };
     let guardada: CitaDetalle | undefined;
     const bien = await accion.ejecutar(async () => {
