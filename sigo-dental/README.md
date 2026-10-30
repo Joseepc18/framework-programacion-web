@@ -6,7 +6,7 @@ Proyecto de la materia Framework de Programación Web (UPSE). Se construye a par
 
 ## Estado
 
-En construcción: existe el backend (`backend/`) con `GET /api/health`, el modelo de datos de usuarios y roles, y el login con JWT y control de acceso por roles; el frontend aún no. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+En construcción: existe el backend (`backend/`) con `GET /api/health`, el modelo de datos de usuarios y roles, y el login con JWT y control de acceso por roles; el frontend (`frontend/`) tiene el esqueleto con el layout responsive y una página que muestra `GET /api/health`, y aún no tiene login ni módulos clínicos. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
 
 ## Alcance
 
@@ -78,7 +78,19 @@ En Neon se aplican a mano los scripts `0xx` (por ejemplo con `psql "$DATABASE_UR
 
 ### Frontend
 
-TODO: se documenta cuando exista el código.
+Requiere Node.js 20.19 o superior (o 22.12+), que es lo que pide Vite 8. Desde `frontend/`, con la API del backend en ejecución:
+
+```bash
+cp .env.example .env          # VITE_API_URL apunta a la API (http://localhost:3001 por defecto)
+npm install
+npm run dev                   # http://localhost:5173
+npm run build                 # comprobación de tipos y build de producción
+npm run lint
+```
+
+El servidor de desarrollo usa siempre el puerto 5173 (si está ocupado, falla en lugar de cambiar de puerto), porque es el origen que admite el CORS del backend por defecto. Para probar desde otro equipo de la red, como una tablet, hay que agregar ese origen a `CORS_ALLOWED_ORIGINS` en el `.env` del backend.
+
+El menú tiene dos páginas: Inicio y Estado del sistema (`/estado`), que consulta `GET /api/health` y muestra el estado de PostgreSQL y Redis. La barra lateral es fija desde 768 px de ancho (se puede colapsar a solo iconos) y es un cajón con botón de menú en pantallas más angostas, para cumplir el RNF-07 (escritorio, laptop y tablets de 10,5 pulgadas o más). `vercel.json` redirige todas las rutas a `index.html` para poder recargar páginas del router en Vercel.
 
 ## Documentación
 

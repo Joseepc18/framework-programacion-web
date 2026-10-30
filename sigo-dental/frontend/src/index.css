@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-clinica-50: #ecfeff;
+  --color-clinica-100: #cffafe;
+  --color-clinica-200: #a5f3fc;
+  --color-clinica-500: #06b6d4;
+  --color-clinica-600: #0891b2;
+  --color-clinica-700: #0e7490;
+  --color-clinica-800: #155e75;
+  --color-clinica-900: #164e63;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+    font-family: var(--font-sans);
+  }
+}
+
+/* La altura de la aplicación es la del viewport; el scroll vive dentro de <main>. */
+.app-layout {
+  height: 100dvh;
+}
