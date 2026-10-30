@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import RutaProtegida from './components/RutaProtegida';
 import { AREAS, rutaDeArea } from './config/permisos';
 import { AuthProvider } from './context/AuthContext';
+import AgendaPage from './pages/AgendaPage';
 import AreaRolPage from './pages/AreaRolPage';
 import CatalogosPage from './pages/CatalogosPage';
 import HealthPage from './pages/HealthPage';
@@ -28,6 +29,7 @@ const App = () => (
             <Route element={<RutaProtegida roles={['recepcionista', 'odontologo', 'asistente']} />}>
               <Route path="pacientes" element={<PacientesPage />} />
               <Route path="pacientes/:id" element={<PacienteFichaPage />} />
+              <Route path="agenda" element={<AgendaPage />} />
             </Route>
             <Route element={<RutaProtegida roles={['recepcionista']} />}>
               <Route path="pacientes/nuevo" element={<PacienteFormPage />} />

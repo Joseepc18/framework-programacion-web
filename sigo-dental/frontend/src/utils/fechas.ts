@@ -18,3 +18,46 @@ export function aISOFecha(fecha: Date): string {
   const dia = String(fecha.getDate()).padStart(2, '0');
   return `${fecha.getFullYear()}-${mes}-${dia}`;
 }
+
+// --- Agenda: las citas viajan en ISO-8601 y se muestran en la hora local del navegador. ---
+
+export const sumarDias = (fecha: Date, dias: number) => {
+  const nueva = new Date(fecha);
+  nueva.setDate(nueva.getDate() + dias);
+  return nueva;
+};
+
+// Medianoche local del día de la fecha dada.
+export const inicioDelDia = (fecha: Date) => new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+
+// Lunes de la semana de la fecha dada, a medianoche local.
+export function inicioDeSemana(fecha: Date): Date {
+  const dia = inicioDelDia(fecha);
+  return sumarDias(dia, -((dia.getDay() + 6) % 7));
+}
+
+// Interpreta AAAA-MM-DD como medianoche local (new Date('AAAA-MM-DD') lo tomaría como UTC).
+export function desdeISOFecha(texto: string): Date {
+  const [anio, mes, dia] = texto.split('-').map(Number);
+  return new Date(anio, mes - 1, dia);
+}
+
+export const horaLocal = (fecha: Date) =>
+  `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
+
+// Combina una fecha AAAA-MM-DD y una hora HH:MM locales en un instante.
+export function combinarFechaHora(fecha: string, hora: string): Date {
+  const [h, m] = hora.split(':').map(Number);
+  const base = desdeISOFecha(fecha);
+  base.setHours(h, m, 0, 0);
+  return base;
+}
+
+// "HH:MM" a minutos desde la medianoche.
+export const minutosDe = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+};
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+export const nombreDelDia = (fecha: Date) => DIAS[fecha.getDay()];

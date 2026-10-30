@@ -2,6 +2,7 @@
 // Esto solo decide qué se muestra: la autoridad real es el backend (RequireRoles, responde 403).
 import {
   Activity,
+  CalendarDays,
   ClipboardList,
   FileSearch,
   HandHelping,
@@ -58,6 +59,7 @@ export const MENU: readonly ElementoMenu[] = [
   { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'] },
   { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'] },
   { to: '/pacientes', label: 'Pacientes', icon: Users, roles: ['recepcionista', 'odontologo', 'asistente'] },
+  { to: '/agenda', label: 'Agenda', icon: CalendarDays, roles: ['recepcionista', 'odontologo', 'asistente'] },
   ...AREAS.map((area) => ({ to: rutaDeArea(area), label: area.label, icon: area.icon, roles: [area.rol] })),
 ];
 
