@@ -76,8 +76,8 @@
 
 /* Hallazgos del odontograma (docs/diseno.md). La restauración va en azul, como pide RF-03; el color nunca es el único
      indicador: cada tipo tiene además su leyenda, su forma y su texto. */
-  --color-odonto-sano: rgba(255, 255, 255, 0.92);
-  --color-odonto-sano-borde: rgba(255, 255, 255, 0.95);
+  --color-odonto-sano: rgba(255, 255, 255, 0.1);
+  --color-odonto-sano-borde: rgba(255, 255, 255, 0.5);
   --color-odonto-caries: #fb7185;
   --color-odonto-caries-borde: #fda4af;
   --color-odonto-restauracion: #60a5fa;

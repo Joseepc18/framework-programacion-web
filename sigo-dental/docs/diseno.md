@@ -40,7 +40,7 @@ Color base `#070B16` con dos manchas de luz desenfocadas, detrás del contenido:
 
 | Estado | Relleno | Borde |
 |---|---|---|
-| Sano | `rgba(255, 255, 255, 0.92)` | `rgba(255, 255, 255, 0.95)` |
+| Sano | `rgba(255, 255, 255, 0.1)` | `rgba(255, 255, 255, 0.5)` |
 | Caries | `#FB7185` | `#FDA4AF` |
 | Restauración | `#60A5FA` (azul, como pide RF-03) | `#BFDBFE` |
 | Sellante | `#2DD4BF` | `#5EEAD4` |

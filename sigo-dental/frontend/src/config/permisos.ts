@@ -4,15 +4,10 @@ import {
   Activity,
   Receipt,
   CalendarDays,
-  ClipboardList,
-  FileSearch,
-  HandHelping,
   History,
   House,
   Library,
-  Shield,
   Smile,
-  Stethoscope,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -36,39 +31,21 @@ export interface ElementoMenu {
   to: string;
   label: string;
   icon: LucideIcon;
+  // Frase corta que usa la pantalla de Inicio como acceso directo.
+  descripcion?: string;
   // Roles que pueden entrar; sin esta lista, cualquier cuenta con sesión.
   roles?: readonly Rol[];
 }
 
-// Cada rol tiene un área de prueba que consulta la ruta GET /api/prueba/<slug> del backend,
-// la cual solo acepta a ese rol. Se reemplazan por los módulos reales cuando existan.
-export interface AreaRol {
-  rol: Rol;
-  slug: string;
-  label: string;
-  icon: LucideIcon;
-}
-
-export const AREAS: readonly AreaRol[] = [
-  { rol: 'admin_ti', slug: 'admin-ti', label: 'Área de administración TI', icon: Shield },
-  { rol: 'recepcionista', slug: 'recepcion', label: 'Área de recepción', icon: ClipboardList },
-  { rol: 'odontologo', slug: 'odontologo', label: 'Área del odontólogo', icon: Stethoscope },
-  { rol: 'asistente', slug: 'asistente', label: 'Área del asistente', icon: HandHelping },
-  { rol: 'auditor', slug: 'auditor', label: 'Área de auditoría', icon: FileSearch },
-];
-
-export const rutaDeArea = (area: AreaRol) => `/area/${area.slug}`;
-
 export const MENU: readonly ElementoMenu[] = [
   { to: '/', label: 'Inicio', icon: House },
-  { to: '/portal', label: 'Mi portal', icon: Smile, roles: ['paciente'] },
-  { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'] },
-  { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'] },
-  { to: '/pacientes', label: 'Pacientes', icon: Users, roles: ['recepcionista', 'odontologo', 'asistente'] },
-  { to: '/auditoria', label: 'Auditoría', icon: History, roles: ['admin_ti', 'auditor'] },
-  { to: '/cobros', label: 'Cobros', icon: Receipt, roles: ['recepcionista', 'auditor'] },
-  { to: '/agenda', label: 'Agenda', icon: CalendarDays, roles: ['recepcionista', 'odontologo', 'asistente'] },
-  ...AREAS.map((area) => ({ to: rutaDeArea(area), label: area.label, icon: area.icon, roles: [area.rol] })),
+  { to: '/portal', label: 'Mi portal', icon: Smile, roles: ['paciente'], descripcion: 'Tus citas, recetas y consentimientos.' },
+  { to: '/estado', label: 'Estado del sistema', icon: Activity, roles: ['admin_ti'], descripcion: 'Comprueba que la base de datos y la caché respondan.' },
+  { to: '/catalogos', label: 'Catálogos', icon: Library, roles: ['admin_ti'], descripcion: 'Sillones, profesionales, procedimientos y parámetros de la clínica.' },
+  { to: '/pacientes', label: 'Pacientes', icon: Users, roles: ['recepcionista', 'odontologo', 'asistente'], descripcion: 'Fichas, anamnesis y expediente clínico.' },
+  { to: '/agenda', label: 'Agenda', icon: CalendarDays, roles: ['recepcionista', 'odontologo', 'asistente'], descripcion: 'Citas del día y de la semana por sillón.' },
+  { to: '/cobros', label: 'Cobros', icon: Receipt, roles: ['recepcionista', 'auditor'], descripcion: 'Comprobantes, pagos y anulaciones.' },
+  { to: '/auditoria', label: 'Auditoría', icon: History, roles: ['admin_ti', 'auditor'], descripcion: 'Quién consultó o cambió cada registro y cuándo.' },
 ];
 
 export const puedeVer = (elemento: Pick<ElementoMenu, 'roles'>, rol: Rol) =>

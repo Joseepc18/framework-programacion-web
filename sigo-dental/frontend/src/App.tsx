@@ -1,11 +1,9 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import RutaProtegida from './components/RutaProtegida';
-import { AREAS, rutaDeArea } from './config/permisos';
 import { AuthProvider } from './context/AuthContext';
 import AgendaPage from './pages/AgendaPage';
 import AuditoriaPage from './pages/AuditoriaPage';
-import AreaRolPage from './pages/AreaRolPage';
 import CobroDetallePage from './pages/CobroDetallePage';
 import CobroFormPage from './pages/CobroFormPage';
 import CobrosPage from './pages/CobrosPage';
@@ -57,11 +55,6 @@ const App = () => (
             <Route element={<RutaProtegida roles={['recepcionista']} />}>
               <Route path="cobros/nuevo" element={<CobroFormPage />} />
             </Route>
-            {AREAS.map((area) => (
-              <Route key={area.slug} element={<RutaProtegida roles={[area.rol]} />}>
-                <Route path={rutaDeArea(area).slice(1)} element={<AreaRolPage area={area} />} />
-              </Route>
-            ))}
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
