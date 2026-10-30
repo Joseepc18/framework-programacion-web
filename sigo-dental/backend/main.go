@@ -17,9 +17,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	// CORS gestiona la seguridad entre distintos puertos y dominios.
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"sigo-dental-backend/almacenamiento"
 	"sigo-dental-backend/cache"
 	"sigo-dental-backend/config"
 	"sigo-dental-backend/controllers"
+	"sigo-dental-backend/middleware"
 	"sigo-dental-backend/notificaciones"
 	"sigo-dental-backend/repository"
 	"sigo-dental-backend/routes"
@@ -67,17 +69,32 @@ func main() {
 	}
 	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend)
 
+	// Archivos del paciente (F2-1): disco en desarrollo, S3 en producción (ALMACEN_ARCHIVOS).
+	almacenArchivos, err := almacenamiento.NuevoDesdeEntorno()
+	if err != nil {
+		log.Fatal(err)
+	}
+	archivos := almacenamiento.NuevoServicio(almacenArchivos, repositorio)
+
+	// La auditoría anota la IP del cliente; detrás de un proxy de confianza se toma de PROXY_HEADER (RNF-06).
+	saltosProxy, _ := strconv.Atoi(os.Getenv("PROXY_SALTOS"))
+	middleware.ConfigurarIPDeProxy(os.Getenv("PROXY_HEADER"), saltosProxy)
+
 	manejadores := routes.Manejadores{
-		Health:    controllers.NuevoHealthController(repositorio, almacen),
-		Auth:      auth,
-		Catalogo:  controllers.NuevoCatalogoController(repositorio),
-		Pacientes: controllers.NuevoPacientesController(repositorio),
-		Citas:     controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
-		Cobros:    controllers.NuevoCobrosController(repositorio),
-		JWTSecret: secretoJWT,
+		Health:     controllers.NuevoHealthController(repositorio, almacen),
+		Auth:       auth,
+		Catalogo:   controllers.NuevoCatalogoController(repositorio),
+		Pacientes:  controllers.NuevoPacientesController(repositorio),
+		Citas:      controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
+		Cobros:     controllers.NuevoCobrosController(repositorio),
+		Expediente: controllers.NuevoExpedienteController(repositorio, archivos),
+		Auditoria:  controllers.NuevoAuditoriaController(repositorio),
+		Auditor:    repositorio,
+		JWTSecret:  secretoJWT,
 	}
 
-	app := fiber.New()
+	// El límite del cuerpo (16 MB) deja subir archivos de hasta 15 MB; Fiber trae 4 MB por defecto.
+	app := fiber.New(fiber.Config{BodyLimit: 16 * 1024 * 1024})
 	origenes := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if origenes == "" {
 		origenes = "http://localhost:5173,http://127.0.0.1:5173"

@@ -36,6 +36,8 @@ func errorDominio(c *fiber.Ctx, err error) error {
 		return errorCliente(c, fiber.StatusConflict, "Ya existe un registro con esos datos")
 	case errors.Is(err, models.ErrConflicto):
 		return errorCliente(c, fiber.StatusConflict, "La operación entra en conflicto con otro registro")
+	case errors.Is(err, models.ErrInmutable):
+		return errorCliente(c, fiber.StatusConflict, "El registro es inmutable y no admite cambios")
 	case errors.Is(err, models.ErrReferencia):
 		return errorCliente(c, fiber.StatusBadRequest, "Los datos enviados no son válidos: una referencia no existe o no corresponde")
 	}

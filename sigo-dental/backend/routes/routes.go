@@ -17,6 +17,11 @@ type Manejadores struct {
 	Pacientes *controllers.PacientesController
 	Citas     *controllers.CitasController
 	Cobros    *controllers.CobrosController
+	// Expediente (F2-1): signos vitales, archivos y consulta de la auditoría.
+	Expediente *controllers.ExpedienteController
+	Auditoria  *controllers.AuditoriaController
+	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
+	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
 	JWTSecret []byte
 }
@@ -51,6 +56,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarPacientes(app, m, autenticado)
 	registrarCitas(app, m, autenticado)
 	registrarCobros(app, m, autenticado)
+	registrarExpediente(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -82,11 +88,12 @@ func registrarPacientes(app *fiber.App, m Manejadores, autenticado fiber.Handler
 	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
 	pac := m.Pacientes
 
-	app.Get("/api/pacientes", autenticado, consulta, pac.ListarPacientes)
-	app.Get("/api/pacientes/:id", autenticado, consulta, pac.ObtenerPaciente)
-	app.Post("/api/pacientes", autenticado, recepcion, pac.CrearPaciente)
-	app.Put("/api/pacientes/:id", autenticado, recepcion, pac.ActualizarPaciente)
-	app.Put("/api/pacientes/:id/anamnesis", autenticado, clinico, pac.ActualizarAnamnesis)
+	paciente, entidadPaciente := middleware.PacienteDeRuta("id"), middleware.EntidadDeRuta("id")
+	app.Get("/api/pacientes", autenticado, consulta, auditar(m, models.AccionConsulta, "pacientes"), pac.ListarPacientes)
+	app.Get("/api/pacientes/:id", autenticado, consulta, auditar(m, models.AccionConsulta, "paciente", paciente, entidadPaciente), pac.ObtenerPaciente)
+	app.Post("/api/pacientes", autenticado, recepcion, auditar(m, models.AccionCreacion, "paciente"), pac.CrearPaciente)
+	app.Put("/api/pacientes/:id", autenticado, recepcion, auditar(m, models.AccionModificacion, "paciente", paciente, entidadPaciente), pac.ActualizarPaciente)
+	app.Put("/api/pacientes/:id/anamnesis", autenticado, clinico, auditar(m, models.AccionModificacion, "anamnesis", paciente), pac.ActualizarAnamnesis)
 }
 
 // registrarCatalogo declara las rutas del catálogo médico: cualquier cuenta con sesión consulta
@@ -128,4 +135,30 @@ func registrarCobros(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
 	app.Post("/api/cobros", autenticado, recepcion, cob.CrearCobro)
 	app.Post("/api/cobros/:id/pagos", autenticado, recepcion, cob.RegistrarPago)
 	app.Post("/api/cobros/:id/anular", autenticado, recepcion, cob.AnularCobro)
+}
+
+// auditar devuelve el middleware que registra el acceso en la bitácora (RNF-06), o uno que no hace nada si no hay auditor.
+func auditar(m Manejadores, accion, entidad string, opciones ...middleware.OpcionAuditoria) fiber.Handler {
+	if m.Auditor == nil {
+		return func(c *fiber.Ctx) error { return c.Next() }
+	}
+	return middleware.Auditar(m.Auditor, accion, entidad, opciones...)
+}
+
+// registrarExpediente declara las rutas de signos vitales, archivos y auditoría. El personal clínico (odontólogo y
+// asistente) registra y consulta; el administrador TI y el auditor leen la bitácora, que nadie puede modificar.
+func registrarExpediente(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	lectorAuditoria := middleware.RequireRoles(models.RolAdminTI, models.RolAuditor)
+	exp, aud := m.Expediente, m.Auditoria
+	paciente := middleware.PacienteDeRuta("id")
+
+	app.Get("/api/pacientes/:id/signos-vitales", autenticado, clinico, auditar(m, models.AccionConsulta, "signos_vitales", paciente), exp.ListarSignosVitales)
+	app.Post("/api/pacientes/:id/signos-vitales", autenticado, clinico, auditar(m, models.AccionCreacion, "signos_vitales", paciente), exp.RegistrarSignosVitales)
+	app.Get("/api/pacientes/:id/archivos", autenticado, clinico, auditar(m, models.AccionConsulta, "archivos", paciente), exp.ListarArchivos)
+	app.Post("/api/pacientes/:id/archivos", autenticado, clinico, auditar(m, models.AccionCreacion, "archivo", paciente), exp.SubirArchivo)
+	// El paciente de una descarga se conoce al leer los metadatos: el controlador lo anota para la auditoría.
+	app.Get("/api/archivos/:id/descargar", autenticado, clinico, auditar(m, models.AccionExportacion, "archivo", middleware.EntidadDeRuta("id")), exp.DescargarArchivo)
+
+	app.Get("/api/auditoria", autenticado, lectorAuditoria, auditar(m, models.AccionConsulta, "auditoria"), aud.ListarAuditoria)
 }

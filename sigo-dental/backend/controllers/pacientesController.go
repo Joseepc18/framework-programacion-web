@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"sigo-dental-backend/middleware"
 	"sigo-dental-backend/models"
 )
 
@@ -243,6 +244,7 @@ func (ctrl *PacientesController) CrearPaciente(c *fiber.Ctx) error {
 	if err != nil {
 		return errorDocumentoRepetido(c, err)
 	}
+	middleware.MarcarAuditoria(c, id, id)
 	detalle, err := ctrl.repo.ObtenerPaciente(c.Context(), id)
 	if err != nil {
 		return errorDominio(c, err)
