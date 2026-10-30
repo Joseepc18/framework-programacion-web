@@ -4,9 +4,11 @@ import "time"
 
 // Tipos de notificación de una cita (RF-11); coinciden con notificaciones.tipo en la base de datos.
 const (
-	NotifConfirmacion   = "confirmacion"
-	NotifRecordatorio48 = "recordatorio_48h"
-	NotifRecordatorio24 = "recordatorio_24h"
+	NotifConfirmacion      = "confirmacion"
+	NotifRecordatorio48    = "recordatorio_48h"
+	NotifRecordatorio24    = "recordatorio_24h"
+	NotifOTPConsentimiento = "otp_consentimiento"
+	NotifOTPPortal         = "otp_portal"
 )
 
 // Estados de una notificación.
@@ -43,4 +45,13 @@ type DatosParaNotificar struct {
 	Canal             string
 	ProfesionalNombre string
 	Zona              string
+}
+
+// NotificacionCodigo es un código de un solo uso enviado al paciente, que se registra en la bitácora sin pertenecer a una cita.
+type NotificacionCodigo struct {
+	PacienteID int
+	Tipo       string
+	Canal      string
+	Destino    string
+	Mensaje    string
 }

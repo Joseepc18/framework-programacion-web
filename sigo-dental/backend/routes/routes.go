@@ -21,9 +21,10 @@ type Manejadores struct {
 	Expediente *controllers.ExpedienteController
 	Auditoria  *controllers.AuditoriaController
 	// Módulos clínicos de la Fase 2.
-	Odontograma *controllers.OdontogramaController
-	Periodonto  *controllers.PeriodontoController
-	Evolucion   *controllers.EvolucionController
+	Odontograma     *controllers.OdontogramaController
+	Periodonto      *controllers.PeriodontoController
+	Evolucion       *controllers.EvolucionController
+	Consentimientos *controllers.ConsentimientosController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -64,6 +65,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarOdontograma(app, m, autenticado)
 	registrarPeriodonto(app, m, autenticado)
 	registrarEvolucion(app, m, autenticado)
+	registrarConsentimientos(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -218,4 +220,30 @@ func registrarEvolucion(app *fiber.App, m Manejadores, autenticado fiber.Handler
 	app.Post(procs, autenticado, odontologo, auditar(m, models.AccionCreacion, "procedimiento_realizado", paciente), evo.IniciarProcedimiento)
 	app.Post(procs+"/:pid/completar", autenticado, odontologo, auditar(m, models.AccionModificacion, "procedimiento_realizado", paciente, middleware.EntidadDeRuta("pid")), evo.CompletarProcedimiento)
 	app.Post(procs+"/:pid/cancelar", autenticado, odontologo, auditar(m, models.AccionModificacion, "procedimiento_realizado", paciente, middleware.EntidadDeRuta("pid")), evo.CancelarProcedimiento)
+}
+
+// registrarConsentimientos declara las rutas del consentimiento informado (F2-5): el odontólogo prepara y revoca; el
+// odontólogo y el asistente recogen la firma; el administrador TI mantiene las plantillas.
+func registrarConsentimientos(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	admin := middleware.RequireRoles(models.RolAdminTI)
+	leePlantillas := middleware.RequireRoles(models.RolOdontologo, models.RolAdminTI)
+	con := m.Consentimientos
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/consentimientos"
+	entidad := middleware.EntidadDeRuta("cid")
+
+	app.Get("/api/consentimiento-plantillas", autenticado, leePlantillas, con.ListarPlantillas)
+	app.Post("/api/consentimiento-plantillas", autenticado, admin, con.CrearPlantilla)
+	app.Put("/api/consentimiento-plantillas/:id", autenticado, admin, con.ActualizarPlantilla)
+
+	app.Get(base, autenticado, clinico, auditar(m, models.AccionConsulta, "consentimientos", paciente), con.ListarConsentimientos)
+	app.Post(base, autenticado, odontologo, auditar(m, models.AccionCreacion, "consentimiento", paciente), con.CrearConsentimiento)
+	app.Post(base+"/:cid/otp", autenticado, clinico, auditar(m, models.AccionModificacion, "consentimiento_otp", paciente, entidad), con.EnviarCodigo)
+	app.Post(base+"/:cid/firmar", autenticado, clinico, auditar(m, models.AccionFirma, "consentimiento", paciente, entidad), con.FirmarConsentimiento)
+	app.Post(base+"/:cid/revocar", autenticado, odontologo, auditar(m, models.AccionCreacion, "consentimiento", paciente), con.RevocarConsentimiento)
+	// Bitácora de códigos enviados (con el adaptador simulado el código es visible para probar).
+	app.Get("/api/pacientes/:id/notificaciones", autenticado, middleware.RequireRoles(models.RolOdontologo, models.RolAsistente, models.RolRecepcionista),
+		auditar(m, models.AccionConsulta, "notificaciones", paciente), con.ListarNotificaciones)
 }

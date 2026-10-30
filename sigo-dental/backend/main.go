@@ -24,6 +24,7 @@ import (
 	"sigo-dental-backend/firma"
 	"sigo-dental-backend/middleware"
 	"sigo-dental-backend/notificaciones"
+	"sigo-dental-backend/otp"
 	"sigo-dental-backend/repository"
 	"sigo-dental-backend/routes"
 )
@@ -68,7 +69,7 @@ func main() {
 	if urlFrontend == "" {
 		urlFrontend = "http://localhost:5173"
 	}
-	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend)
+	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend).ConCodigos(repositorio)
 
 	// Archivos del paciente (F2-1): disco en desarrollo, S3 en producción (ALMACEN_ARCHIVOS).
 	almacenArchivos, err := almacenamiento.NuevoDesdeEntorno()
@@ -83,21 +84,24 @@ func main() {
 
 	// Firma digital de notas, adendas, recetas y consentimientos (reautenticación con la contraseña).
 	firmaDigital := firma.NuevoServicio(repositorio)
+	// Códigos de un solo uso (consentimientos y portal del paciente).
+	codigosOTP := otp.NuevoServicio(repositorio, secretoJWT)
 
 	manejadores := routes.Manejadores{
-		Health:      controllers.NuevoHealthController(repositorio, almacen),
-		Auth:        auth,
-		Catalogo:    controllers.NuevoCatalogoController(repositorio),
-		Pacientes:   controllers.NuevoPacientesController(repositorio),
-		Citas:       controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
-		Cobros:      controllers.NuevoCobrosController(repositorio),
-		Expediente:  controllers.NuevoExpedienteController(repositorio, archivos),
-		Auditoria:   controllers.NuevoAuditoriaController(repositorio),
-		Odontograma: controllers.NuevoOdontogramaController(repositorio),
-		Periodonto:  controllers.NuevoPeriodontoController(repositorio),
-		Evolucion:   controllers.NuevoEvolucionController(repositorio, firmaDigital),
-		Auditor:     repositorio,
-		JWTSecret:   secretoJWT,
+		Health:          controllers.NuevoHealthController(repositorio, almacen),
+		Auth:            auth,
+		Catalogo:        controllers.NuevoCatalogoController(repositorio),
+		Pacientes:       controllers.NuevoPacientesController(repositorio),
+		Citas:           controllers.NuevoCitasController(repositorio, avisos, secretoJWT),
+		Cobros:          controllers.NuevoCobrosController(repositorio),
+		Expediente:      controllers.NuevoExpedienteController(repositorio, archivos),
+		Auditoria:       controllers.NuevoAuditoriaController(repositorio),
+		Odontograma:     controllers.NuevoOdontogramaController(repositorio),
+		Periodonto:      controllers.NuevoPeriodontoController(repositorio),
+		Evolucion:       controllers.NuevoEvolucionController(repositorio, firmaDigital),
+		Consentimientos: controllers.NuevoConsentimientosController(repositorio, codigosOTP, avisos, archivos),
+		Auditor:         repositorio,
+		JWTSecret:       secretoJWT,
 	}
 
 	// El límite del cuerpo (16 MB) deja subir archivos de hasta 15 MB; Fiber trae 4 MB por defecto.

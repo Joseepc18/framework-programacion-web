@@ -137,3 +137,6 @@ func ConfigurarIPDeProxy(cabecera string, saltos int) {
 		return c.Context().RemoteIP().String()
 	}
 }
+
+// IPDelCliente devuelve la IP de origen de la petición con la misma regla que la auditoría (proxy de confianza).
+func IPDelCliente(c *fiber.Ctx) string { return resolverIP(c) }

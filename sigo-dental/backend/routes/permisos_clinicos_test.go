@@ -42,6 +42,16 @@ var permisosClinicos = []permisoRuta{
 	{"POST", "/api/pacientes/1/procedimientos-realizados", soloOdontologo},
 	{"POST", "/api/pacientes/1/procedimientos-realizados/1/completar", soloOdontologo},
 	{"POST", "/api/pacientes/1/procedimientos-realizados/1/cancelar", soloOdontologo},
+	// F2-5: consentimientos; las plantillas las mantiene el administrador TI.
+	{"GET", "/api/consentimiento-plantillas", []string{models.RolOdontologo, models.RolAdminTI}},
+	{"POST", "/api/consentimiento-plantillas", []string{models.RolAdminTI}},
+	{"PUT", "/api/consentimiento-plantillas/1", []string{models.RolAdminTI}},
+	{"GET", "/api/pacientes/1/consentimientos", rolesClinicos},
+	{"POST", "/api/pacientes/1/consentimientos", soloOdontologo},
+	{"POST", "/api/pacientes/1/consentimientos/1/otp", rolesClinicos},
+	{"POST", "/api/pacientes/1/consentimientos/1/firmar", rolesClinicos},
+	{"POST", "/api/pacientes/1/consentimientos/1/revocar", soloOdontologo},
+	{"GET", "/api/pacientes/1/notificaciones", []string{models.RolOdontologo, models.RolAsistente, models.RolRecepcionista}},
 	// F2-2: el odontólogo escribe el odontograma; el asistente solo lo consulta.
 	{"GET", "/api/pacientes/1/odontograma", rolesClinicos},
 	{"GET", "/api/pacientes/1/odontograma/historial", rolesClinicos},

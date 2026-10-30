@@ -29,6 +29,8 @@ type Servicio struct {
 	secreto     []byte
 	urlFrontend string
 	ahora       func() time.Time
+	// codigos registra los códigos de un solo uso enviados al paciente (opcional; ver ConCodigos).
+	codigos RepositorioCodigos
 }
 
 // NuevoServicio construye el servicio. urlFrontend es la dirección pública del sitio, para armar el enlace

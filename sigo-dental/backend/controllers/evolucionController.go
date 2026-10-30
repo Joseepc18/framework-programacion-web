@@ -483,6 +483,10 @@ func errorEvolucion(c *fiber.Ctx, err error) error {
 		return errorCliente(c, fiber.StatusForbidden, "Solo el profesional responsable puede firmar este documento")
 	case errors.Is(err, models.ErrDemasiadosIntentos):
 		return errorCliente(c, fiber.StatusTooManyRequests, "Demasiados intentos con contraseña incorrecta: espera unos minutos")
+	case errors.Is(err, models.ErrConsentimientoRequerido):
+		return errorCliente(c, fiber.StatusConflict, "Este procedimiento requiere un consentimiento informado firmado y vigente: obtenlo en la pestaña Consentimientos antes de iniciarlo")
+	case errors.Is(err, models.ErrConsentimientoFirmado):
+		return errorCliente(c, fiber.StatusConflict, "El consentimiento ya está firmado y no admite cambios")
 	case errors.Is(err, models.ErrProcedimientoNoEnCurso):
 		return errorCliente(c, fiber.StatusConflict, "El procedimiento ya no está en curso: un procedimiento realizado no se cambia")
 	}

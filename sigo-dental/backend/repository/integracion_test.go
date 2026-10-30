@@ -225,7 +225,7 @@ func TestEvolucionProtegeProcedimientosRealizadosYNotasFirmadas(t *testing.T) {
 	if err := tx.QueryRow(ctx, `SELECT id FROM profesionales WHERE usuario_id = $1`, usuarioID).Scan(&profesionalID); err != nil {
 		t.Skipf("falta el profesional de prueba: %v", err)
 	}
-	if err := tx.QueryRow(ctx, `SELECT id FROM procedimientos WHERE activo ORDER BY id LIMIT 1`).Scan(&catalogoID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT id FROM procedimientos WHERE activo AND NOT requiere_consentimiento ORDER BY id LIMIT 1`).Scan(&catalogoID); err != nil {
 		t.Skipf("falta el catálogo de prueba: %v", err)
 	}
 
@@ -269,4 +269,75 @@ func TestEvolucionProtegeProcedimientosRealizadosYNotasFirmadas(t *testing.T) {
 	}
 	debeFallarComoInmutable(t, tx, "DELETE de una nota", `DELETE FROM notas_clinicas WHERE id = $1`, notaID)
 	debeFallarComoInmutable(t, tx, "UPDATE de la firma", `UPDATE firmas SET huella_sha256 = repeat('0', 64) WHERE entidad = 'nota'`)
+}
+
+// RF-06: un procedimiento que exige consentimiento no se inicia sin uno firmado, vigente y no revocado.
+func TestProcedimientoConConsentimientoObligatorio(t *testing.T) {
+	pg, tx := repoTransaccional(t)
+	ctx := context.Background()
+	pacienteID, usuarioID := pacienteDePrueba(t, tx)
+	var profesionalID, procID int
+	if err := tx.QueryRow(ctx, `SELECT id FROM profesionales WHERE usuario_id = $1`, usuarioID).Scan(&profesionalID); err != nil {
+		t.Skipf("falta el profesional de prueba: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `INSERT INTO procedimientos (codigo, nombre, precio_centavos, duracion_min, requiere_consentimiento)
+		VALUES ('T-' || floor(random() * 1e9)::text, 'Procedimiento de prueba con consentimiento', 5000, 30, TRUE) RETURNING id`).Scan(&procID); err != nil {
+		t.Fatal(err)
+	}
+	iniciar := func() error {
+		return intentar(t, tx, func(p *PostgresRepository) error {
+			_, err := p.IniciarProcedimiento(ctx, models.NuevoProcedimientoRealizado{PacienteID: pacienteID, ProcedimientoID: procID}, profesionalID, usuarioID)
+			return err
+		})
+	}
+
+	if err := iniciar(); !errors.Is(err, models.ErrConsentimientoRequerido) {
+		t.Fatalf("sin consentimiento: error = %v, se esperaba ErrConsentimientoRequerido", err)
+	}
+
+	nuevo := models.NuevoConsentimiento{PacienteID: pacienteID, ProcedimientoID: procID, ProfesionalID: profesionalID, Tipo: models.ConsentTipoConsentimiento,
+		Titulo: "Consentimiento", Texto: "Texto", FirmanteTipo: models.FirmantePaciente, FirmanteNombre: "Paciente", FirmanteDocumento: "123"}
+	consentimientoID, err := pg.CrearConsentimiento(ctx, nuevo, usuarioID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := iniciar(); !errors.Is(err, models.ErrConsentimientoRequerido) {
+		t.Errorf("consentimiento pendiente (sin firmar): error = %v", err)
+	}
+
+	var archivoID int
+	if err := tx.QueryRow(ctx, `INSERT INTO archivos_paciente (paciente_id, categoria, nombre_original, tipo_mime, tamano_bytes, sha256, clave_almacen, subido_por)
+		VALUES ($1, 'consentimiento', 'c.pdf', 'application/pdf', 10, repeat('a', 64), 'prueba/' || random()::text, $2) RETURNING id`, pacienteID, usuarioID).Scan(&archivoID); err != nil {
+		t.Fatal(err)
+	}
+	firma := models.DatosFirmaConsentimiento{Modalidad: models.ModalidadOTP, Dispositivo: "prueba", FirmadoEn: time.Now(), ArchivoID: archivoID}
+	if err := pg.FirmarConsentimiento(ctx, pacienteID, consentimientoID, firma); err != nil {
+		t.Fatal(err)
+	}
+	if err := intentar(t, tx, func(p *PostgresRepository) error {
+		return p.FirmarConsentimiento(ctx, pacienteID, consentimientoID, firma)
+	}); !errors.Is(err, models.ErrInmutable) && !errors.Is(err, models.ErrConsentimientoFirmado) {
+		t.Errorf("firmar dos veces: error = %v", err)
+	}
+	debeFallarComoInmutable(t, tx, "cambiar el texto firmado", `UPDATE consentimientos SET texto = 'otro' WHERE id = $1`, consentimientoID)
+	debeFallarComoInmutable(t, tx, "borrar el consentimiento", `DELETE FROM consentimientos WHERE id = $1`, consentimientoID)
+	if err := iniciar(); err != nil {
+		t.Fatalf("con consentimiento firmado y vigente debe iniciar: %v", err)
+	}
+
+	// Revocación: un documento nuevo; sin firmar no cambia nada, firmada invalida el consentimiento.
+	revoca := consentimientoID
+	revocacionID, err := pg.CrearConsentimiento(ctx, models.NuevoConsentimiento{PacienteID: pacienteID, ProcedimientoID: procID, ProfesionalID: profesionalID,
+		Tipo: models.ConsentTipoRevocacion, RevocaA: &revoca, Titulo: "Revocación", Texto: "Revoco", FirmanteTipo: models.FirmantePaciente, FirmanteNombre: "Paciente", FirmanteDocumento: "123"}, usuarioID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.FirmarConsentimiento(ctx, pacienteID, revocacionID, firma); err == nil {
+		// El PDF de la revocación es otro archivo; reutilizar el id es válido en la prueba porque no hay clave única.
+		if err := iniciar(); !errors.Is(err, models.ErrConsentimientoRequerido) {
+			t.Errorf("tras la revocación firmada: error = %v, se esperaba ErrConsentimientoRequerido", err)
+		}
+	} else {
+		t.Fatal(err)
+	}
 }

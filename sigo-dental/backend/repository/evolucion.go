@@ -312,13 +312,27 @@ func (pg *PostgresRepository) IniciarProcedimiento(ctx context.Context, n models
 		if err := exigirPaciente(ctx, tx, n.PacienteID); err != nil {
 			return err
 		}
-		var activo bool
-		err := tx.QueryRow(ctx, `SELECT activo FROM procedimientos WHERE id = $1`, n.ProcedimientoID).Scan(&activo)
+		var activo, exigeConsentimiento bool
+		err := tx.QueryRow(ctx, `SELECT activo, requiere_consentimiento FROM procedimientos WHERE id = $1`, n.ProcedimientoID).Scan(&activo, &exigeConsentimiento)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && !activo) {
 			return models.ErrReferencia
 		}
 		if err != nil {
 			return err
+		}
+		// RF-06: un procedimiento que exige consentimiento no se inicia sin uno firmado, vigente y no revocado.
+		if exigeConsentimiento {
+			var hayConsentimiento bool
+			if err := tx.QueryRow(ctx,
+				`SELECT EXISTS (SELECT 1 FROM consentimientos c WHERE c.paciente_id = $1 AND c.procedimiento_id = $2
+				        AND c.tipo = 'consentimiento' AND c.estado = 'firmado'
+				        AND c.firmado_en > NOW() - make_interval(days => `+vigenciaDias+`) AND NOT `+hayRevocacion+`)`,
+				n.PacienteID, n.ProcedimientoID).Scan(&hayConsentimiento); err != nil {
+				return err
+			}
+			if !hayConsentimiento {
+				return models.ErrConsentimientoRequerido
+			}
 		}
 		return tx.QueryRow(ctx,
 			`INSERT INTO procedimientos_realizados (paciente_id, procedimiento_id, pieza, superficie, profesional_id, cita_id, notas, registrado_por)
