@@ -12,6 +12,8 @@ var (
 	ErrReferencia = errors.New("referencia inválida")
 	// ErrConflicto: choca con el estado actual (por ejemplo un sillón ya ocupado a esa hora).
 	ErrConflicto = errors.New("conflicto con el estado actual")
+	// ErrEstadoCambiado: la cita ya no está en el estado esperado (la cambió otra persona o ya es final).
+	ErrEstadoCambiado = errors.New("la cita cambió de estado")
 )
 
 // ItemCatalogo es un elemento de un catálogo simple (consultorios, convenios y condiciones críticas).

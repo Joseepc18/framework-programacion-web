@@ -15,6 +15,7 @@ type Manejadores struct {
 	Auth      *controllers.AuthController
 	Catalogo  *controllers.CatalogoController
 	Pacientes *controllers.PacientesController
+	Citas     *controllers.CitasController
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
 	JWTSecret []byte
 }
@@ -47,6 +48,23 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 
 	registrarCatalogo(app, m, autenticado)
 	registrarPacientes(app, m, autenticado)
+	registrarCitas(app, m, autenticado)
+}
+
+// registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
+// odontólogo y el asistente consultan y cambian el estado (el controlador limita a los dos últimos a
+// En Atención y Atendido). El auditor no accede a la agenda clínica.
+func registrarCitas(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	consulta := middleware.RequireRoles(models.RolRecepcionista, models.RolOdontologo, models.RolAsistente)
+	recepcion := middleware.RequireRoles(models.RolRecepcionista)
+	cit := m.Citas
+
+	app.Get("/api/agenda/horario", autenticado, consulta, cit.HorarioAgenda)
+	app.Get("/api/citas", autenticado, consulta, cit.ListarCitas)
+	app.Get("/api/citas/:id", autenticado, consulta, cit.ObtenerCita)
+	app.Post("/api/citas", autenticado, recepcion, cit.CrearCita)
+	app.Put("/api/citas/:id", autenticado, recepcion, cit.ReprogramarCita)
+	app.Post("/api/citas/:id/estado", autenticado, consulta, cit.CambiarEstado)
 }
 
 // registrarPacientes declara las rutas de pacientes: la recepción registra y modifica la ficha,

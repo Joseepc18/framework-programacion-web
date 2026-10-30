@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	// Incrusta la base de zonas horarias: la agenda la necesita aunque el sistema no la tenga (Windows, contenedores mínimos).
+	_ "time/tzdata"
 
 	"github.com/gofiber/fiber/v2"
 	// CORS gestiona la seguridad entre distintos puertos y dominios.
@@ -54,6 +56,7 @@ func main() {
 		Auth:      auth,
 		Catalogo:  controllers.NuevoCatalogoController(repositorio),
 		Pacientes: controllers.NuevoPacientesController(repositorio),
+		Citas:     controllers.NuevoCitasController(repositorio),
 		JWTSecret: secretoJWT,
 	}
 

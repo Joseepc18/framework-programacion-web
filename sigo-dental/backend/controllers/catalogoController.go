@@ -377,6 +377,12 @@ func (ctrl *CatalogoController) ActualizarParametro(c *fiber.Ctx) error {
 		}
 	}
 
+	if clave == ClaveZonaHoraria {
+		if _, err := time.LoadLocation(valor); err != nil {
+			return errorCliente(c, fiber.StatusBadRequest, "La zona horaria debe ser un nombre IANA válido, por ejemplo America/Guayaquil")
+		}
+	}
+
 	parametro, err := ctrl.repo.ActualizarParametro(c.Context(), clave, valor)
 	if err != nil {
 		return errorDominio(c, err)
@@ -384,8 +390,9 @@ func (ctrl *CatalogoController) ActualizarParametro(c *fiber.Ctx) error {
 	return c.JSON(parametro)
 }
 
-// Claves de los parámetros de la agenda (sembradas en la migración 002).
+// Claves de los parámetros de la agenda (las horas se siembran en la migración 002 y la zona en la 004).
 const (
 	ClaveAgendaHoraInicio = "agenda_hora_inicio"
 	ClaveAgendaHoraFin    = "agenda_hora_fin"
+	ClaveZonaHoraria      = "zona_horaria"
 )

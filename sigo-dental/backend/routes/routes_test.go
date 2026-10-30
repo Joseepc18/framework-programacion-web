@@ -25,6 +25,7 @@ func appDePrueba(t *testing.T) *fiber.App {
 		Auth:      auth,
 		Catalogo:  controllers.NuevoCatalogoController(nil),
 		Pacientes: controllers.NuevoPacientesController(nil),
+		Citas:     controllers.NuevoCitasController(nil),
 		JWTSecret: secretoPrueba,
 	})
 	return app
@@ -173,6 +174,51 @@ func TestPermisosDePacientes(t *testing.T) {
 	}
 
 	for _, ruta := range []string{"/api/pacientes", "/api/pacientes/1"} {
+		resp, err := app.Test(httptest.NewRequest("GET", ruta, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != fiber.StatusUnauthorized {
+			t.Errorf("GET %s sin token: estado = %d, se esperaba 401", ruta, resp.StatusCode)
+		}
+	}
+}
+
+// En la agenda solo la recepción agenda y reprograma; el auditor y el administrador TI no la ven.
+func TestPermisosDeCitas(t *testing.T) {
+	app := appDePrueba(t)
+	prohibidos := []struct{ rol, metodo, ruta string }{
+		{models.RolAuditor, "GET", "/api/citas"},
+		{models.RolAdminTI, "GET", "/api/citas"},
+		{models.RolAuditor, "GET", "/api/citas/1"},
+		{models.RolAuditor, "GET", "/api/agenda/horario"},
+		{models.RolOdontologo, "POST", "/api/citas"},
+		{models.RolAsistente, "POST", "/api/citas"},
+		{models.RolAuditor, "POST", "/api/citas"},
+		{models.RolOdontologo, "PUT", "/api/citas/1"},
+		{models.RolAsistente, "PUT", "/api/citas/1"},
+		{models.RolAuditor, "POST", "/api/citas/1/estado"},
+		{models.RolAdminTI, "POST", "/api/citas/1/estado"},
+	}
+	for _, p := range prohibidos {
+		t.Run(p.rol+" "+p.metodo+" "+p.ruta, func(t *testing.T) {
+			token, err := middleware.GenerarToken(secretoPrueba, 1, p.rol+"@sigo-dental.test", p.rol)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(p.metodo, p.ruta, nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != fiber.StatusForbidden {
+				t.Errorf("estado = %d, se esperaba 403", resp.StatusCode)
+			}
+		})
+	}
+
+	for _, ruta := range []string{"/api/citas", "/api/citas/1", "/api/agenda/horario"} {
 		resp, err := app.Test(httptest.NewRequest("GET", ruta, nil))
 		if err != nil {
 			t.Fatal(err)
