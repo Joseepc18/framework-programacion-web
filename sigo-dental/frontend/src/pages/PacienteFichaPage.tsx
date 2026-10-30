@@ -8,6 +8,7 @@ import { useAccion } from '../hooks/useAccion';
 import { useCarga } from '../hooks/useCarga';
 import { listarSimples, type ItemCatalogo } from '../services/catalogoService';
 import PestanaArchivos from './expediente/PestanaArchivos';
+import PestanaEvolucion from './expediente/PestanaEvolucion';
 import PestanaOdontograma from './expediente/PestanaOdontograma';
 import PestanaPeriodonto from './expediente/PestanaPeriodonto';
 import PestanaSignos from './expediente/PestanaSignos';
@@ -114,6 +115,7 @@ const PESTANAS: readonly Pestana[] = [
   { id: 'datos', etiqueta: 'Datos del paciente' },
   { id: 'anamnesis', etiqueta: 'Anamnesis' },
   { id: 'odontograma', etiqueta: 'Odontograma', clinica: true },
+  { id: 'evolucion', etiqueta: 'Evolución', clinica: true },
   { id: 'periodonto', etiqueta: 'Periodontograma', clinica: true },
   { id: 'signos', etiqueta: 'Signos vitales', clinica: true },
   { id: 'archivos', etiqueta: 'Archivos', clinica: true },
@@ -140,6 +142,8 @@ const PacienteFichaPage = () => {
     switch (activa) {
       case 'anamnesis':
         return <PestanaAnamnesis key={p.id} p={p} condiciones={condiciones.datos ?? []} puedeEditar={esClinico} alGuardar={paciente.recargar} />;
+      case 'evolucion':
+        return <PestanaEvolucion pacienteId={p.id} />;
       case 'odontograma':
         return <PestanaOdontograma pacienteId={p.id} edad={p.edad} puedeEditar={usuario?.rol === 'odontologo'} />;
       case 'periodonto':
