@@ -22,6 +22,7 @@ type Manejadores struct {
 	Auditoria  *controllers.AuditoriaController
 	// Módulos clínicos de la Fase 2.
 	Odontograma *controllers.OdontogramaController
+	Periodonto  *controllers.PeriodontoController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -60,6 +61,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarCobros(app, m, autenticado)
 	registrarExpediente(app, m, autenticado)
 	registrarOdontograma(app, m, autenticado)
+	registrarPeriodonto(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -180,4 +182,16 @@ func registrarOdontograma(app *fiber.App, m Manejadores, autenticado fiber.Handl
 	app.Post(base+"/hallazgos", autenticado, escritura, auditar(m, models.AccionCreacion, "hallazgo", paciente), odo.RegistrarHallazgo)
 	app.Put(base+"/hallazgos/:hid", autenticado, escritura, auditar(m, models.AccionModificacion, "hallazgo", paciente), odo.CorregirHallazgo)
 	app.Post(base+"/hallazgos/:hid/retirar", autenticado, escritura, auditar(m, models.AccionModificacion, "hallazgo", paciente, middleware.EntidadDeRuta("hid")), odo.RetirarHallazgo)
+}
+
+// registrarPeriodonto declara las rutas del periodontograma (F2-3): el personal clínico captura y consulta.
+func registrarPeriodonto(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	per := m.Periodonto
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/periodontogramas"
+
+	app.Get(base, autenticado, clinico, auditar(m, models.AccionConsulta, "periodontogramas", paciente), per.ListarPeriodontogramas)
+	app.Get(base+"/:eid", autenticado, clinico, auditar(m, models.AccionConsulta, "periodontograma", paciente, middleware.EntidadDeRuta("eid")), per.ObtenerPeriodontograma)
+	app.Post(base, autenticado, clinico, auditar(m, models.AccionCreacion, "periodontograma", paciente), per.CrearPeriodontograma)
 }

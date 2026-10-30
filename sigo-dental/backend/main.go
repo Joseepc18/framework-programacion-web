@@ -90,6 +90,7 @@ func main() {
 		Expediente:  controllers.NuevoExpedienteController(repositorio, archivos),
 		Auditoria:   controllers.NuevoAuditoriaController(repositorio),
 		Odontograma: controllers.NuevoOdontogramaController(repositorio),
+		Periodonto:  controllers.NuevoPeriodontoController(repositorio),
 		Auditor:     repositorio,
 		JWTSecret:   secretoJWT,
 	}
