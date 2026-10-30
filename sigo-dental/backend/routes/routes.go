@@ -26,6 +26,7 @@ type Manejadores struct {
 	Evolucion       *controllers.EvolucionController
 	Consentimientos *controllers.ConsentimientosController
 	Recetas         *controllers.RecetasController
+	Presupuestos    *controllers.PresupuestosController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -68,6 +69,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarEvolucion(app, m, autenticado)
 	registrarConsentimientos(app, m, autenticado)
 	registrarRecetas(app, m, autenticado)
+	registrarPresupuestos(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -267,4 +269,24 @@ func registrarRecetas(app *fiber.App, m Manejadores, autenticado fiber.Handler) 
 	app.Post(base+"/:rid/firmar", autenticado, odontologo, auditar(m, models.AccionFirma, "receta", paciente, entidad), rec.FirmarReceta)
 	app.Post(base+"/:rid/anular", autenticado, odontologo, auditar(m, models.AccionAnulacion, "receta", paciente, entidad), rec.AnularReceta)
 	app.Get(base+"/:rid/pdf", autenticado, lectura, auditar(m, models.AccionExportacion, "receta", paciente, entidad), rec.PDFReceta)
+}
+
+// registrarPresupuestos declara las rutas de presupuestos y tareas agendables (F2-7): el odontólogo arma el plan y crea
+// versiones nuevas; la recepción y el odontólogo consultan, presentan y registran la aprobación.
+func registrarPresupuestos(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	lectura := middleware.RequireRoles(models.RolOdontologo, models.RolRecepcionista)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	pre := m.Presupuestos
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/presupuestos"
+	entidad := middleware.EntidadDeRuta("pid")
+
+	app.Get(base, autenticado, lectura, auditar(m, models.AccionConsulta, "presupuestos", paciente), pre.ListarPresupuestos)
+	app.Post(base, autenticado, odontologo, auditar(m, models.AccionCreacion, "presupuesto", paciente), pre.CrearPresupuesto)
+	app.Put(base+"/:pid", autenticado, odontologo, auditar(m, models.AccionModificacion, "presupuesto", paciente, entidad), pre.ActualizarPresupuesto)
+	app.Post(base+"/:pid/presentar", autenticado, lectura, auditar(m, models.AccionModificacion, "presupuesto", paciente, entidad), pre.PresentarPresupuesto)
+	app.Post(base+"/:pid/resolver", autenticado, lectura, auditar(m, models.AccionFirma, "presupuesto", paciente, entidad), pre.ResolverPresupuesto)
+	app.Post(base+"/:pid/nueva-version", autenticado, odontologo, auditar(m, models.AccionCreacion, "presupuesto", paciente), pre.NuevaVersion)
+	app.Get(base+"/:pid/pdf", autenticado, lectura, auditar(m, models.AccionExportacion, "presupuesto", paciente, entidad), pre.PDFPresupuesto)
+	app.Get("/api/pacientes/:id/tareas", autenticado, lectura, auditar(m, models.AccionConsulta, "tareas", paciente), pre.ListarTareas)
 }

@@ -47,6 +47,8 @@ type DatosCita struct {
 	Notas           string    `json:"notas"`
 	Inicio          time.Time `json:"inicio"`
 	Fin             time.Time `json:"fin"`
+	// PresupuestoItemID liga la cita a una tarea aprobada de un presupuesto (RF-08); solo al agendar.
+	PresupuestoItemID *int `json:"presupuesto_item_id"`
 }
 
 // Cita es una cita con los nombres de lo que referencia, lista para pintar en el calendario.

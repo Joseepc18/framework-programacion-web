@@ -83,6 +83,8 @@ type cuerpoCita struct {
 	Notas           string    `json:"notas"`
 	Inicio          time.Time `json:"inicio"`
 	Fin             time.Time `json:"fin"`
+	// PresupuestoItemID: tarea aprobada de un presupuesto que esta cita atiende (RF-08).
+	PresupuestoItemID *int `json:"presupuesto_item_id"`
 }
 
 // minutosDelDia convierte "HH:MM" en minutos desde la medianoche.
@@ -149,6 +151,9 @@ func (cuerpo cuerpoCita) validar(horario models.HorarioAgenda) (models.DatosCita
 	}
 	d.PacienteID, d.ProfesionalID, d.SillonID, d.ProcedimientoID = cuerpo.PacienteID, cuerpo.ProfesionalID, cuerpo.SillonID, cuerpo.ProcedimientoID
 	d.Inicio, d.Fin = cuerpo.Inicio.UTC(), cuerpo.Fin.UTC()
+	if cuerpo.PresupuestoItemID != nil && *cuerpo.PresupuestoItemID > 0 {
+		d.PresupuestoItemID = cuerpo.PresupuestoItemID
+	}
 	return d, "", nil
 }
 

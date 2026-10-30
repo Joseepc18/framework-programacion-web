@@ -334,10 +334,15 @@ func (pg *PostgresRepository) IniciarProcedimiento(ctx context.Context, n models
 				return models.ErrConsentimientoRequerido
 			}
 		}
+		if n.PresupuestoItemID != nil {
+			if err := itemAgendable(ctx, tx, n.PacienteID, *n.PresupuestoItemID); err != nil {
+				return err
+			}
+		}
 		return tx.QueryRow(ctx,
-			`INSERT INTO procedimientos_realizados (paciente_id, procedimiento_id, pieza, superficie, profesional_id, cita_id, notas, registrado_por)
-			 VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8) RETURNING id`,
-			n.PacienteID, n.ProcedimientoID, n.Pieza, n.Superficie, profesionalID, n.CitaID, n.Notas, usuarioID).Scan(&id)
+			`INSERT INTO procedimientos_realizados (paciente_id, procedimiento_id, pieza, superficie, profesional_id, cita_id, notas, registrado_por, presupuesto_item_id)
+			 VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9) RETURNING id`,
+			n.PacienteID, n.ProcedimientoID, n.Pieza, n.Superficie, profesionalID, n.CitaID, n.Notas, usuarioID, n.PresupuestoItemID).Scan(&id)
 	})
 	if err != nil {
 		return 0, traducirError(err)

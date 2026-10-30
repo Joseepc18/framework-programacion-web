@@ -101,6 +101,7 @@ func main() {
 		Evolucion:       controllers.NuevoEvolucionController(repositorio, firmaDigital),
 		Consentimientos: controllers.NuevoConsentimientosController(repositorio, codigosOTP, avisos, archivos),
 		Recetas:         controllers.NuevoRecetasController(repositorio, firmaDigital),
+		Presupuestos:    controllers.NuevoPresupuestosController(repositorio),
 		Auditor:         repositorio,
 		JWTSecret:       secretoJWT,
 	}

@@ -61,6 +61,15 @@ var permisosClinicos = []permisoRuta{
 	{"POST", "/api/pacientes/1/recetas/1/firmar", soloOdontologo},
 	{"POST", "/api/pacientes/1/recetas/1/anular", soloOdontologo},
 	{"GET", "/api/pacientes/1/recetas/1/pdf", rolesClinicos},
+	// F2-7: el odontólogo arma el plan; la recepción y el odontólogo consultan, presentan y registran la aprobación.
+	{"GET", "/api/pacientes/1/presupuestos", []string{models.RolOdontologo, models.RolRecepcionista}},
+	{"POST", "/api/pacientes/1/presupuestos", soloOdontologo},
+	{"PUT", "/api/pacientes/1/presupuestos/1", soloOdontologo},
+	{"POST", "/api/pacientes/1/presupuestos/1/presentar", []string{models.RolOdontologo, models.RolRecepcionista}},
+	{"POST", "/api/pacientes/1/presupuestos/1/resolver", []string{models.RolOdontologo, models.RolRecepcionista}},
+	{"POST", "/api/pacientes/1/presupuestos/1/nueva-version", soloOdontologo},
+	{"GET", "/api/pacientes/1/presupuestos/1/pdf", []string{models.RolOdontologo, models.RolRecepcionista}},
+	{"GET", "/api/pacientes/1/tareas", []string{models.RolOdontologo, models.RolRecepcionista}},
 	// F2-2: el odontólogo escribe el odontograma; el asistente solo lo consulta.
 	{"GET", "/api/pacientes/1/odontograma", rolesClinicos},
 	{"GET", "/api/pacientes/1/odontograma/historial", rolesClinicos},

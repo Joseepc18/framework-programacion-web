@@ -113,10 +113,15 @@ func (pg *PostgresRepository) CrearCita(ctx context.Context, d models.DatosCita,
 		if !ok {
 			return models.ErrReferencia
 		}
+		if d.PresupuestoItemID != nil {
+			if err := itemAgendable(ctx, tx, d.PacienteID, *d.PresupuestoItemID); err != nil {
+				return err
+			}
+		}
 		if err := tx.QueryRow(ctx,
-			`INSERT INTO citas (paciente_id, profesional_id, sillon_id, procedimiento_id, motivo, notas, inicio, fin, creado_por)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-			d.PacienteID, d.ProfesionalID, d.SillonID, d.ProcedimientoID, d.Motivo, d.Notas, d.Inicio, d.Fin, usuarioID,
+			`INSERT INTO citas (paciente_id, profesional_id, sillon_id, procedimiento_id, motivo, notas, inicio, fin, creado_por, presupuesto_item_id)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			d.PacienteID, d.ProfesionalID, d.SillonID, d.ProcedimientoID, d.Motivo, d.Notas, d.Inicio, d.Fin, usuarioID, d.PresupuestoItemID,
 		).Scan(&id); err != nil {
 			return err
 		}
