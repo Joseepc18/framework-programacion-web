@@ -23,6 +23,7 @@ type Manejadores struct {
 	// Módulos clínicos de la Fase 2.
 	Odontograma *controllers.OdontogramaController
 	Periodonto  *controllers.PeriodontoController
+	Evolucion   *controllers.EvolucionController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -62,6 +63,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarExpediente(app, m, autenticado)
 	registrarOdontograma(app, m, autenticado)
 	registrarPeriodonto(app, m, autenticado)
+	registrarEvolucion(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -194,4 +196,26 @@ func registrarPeriodonto(app *fiber.App, m Manejadores, autenticado fiber.Handle
 	app.Get(base, autenticado, clinico, auditar(m, models.AccionConsulta, "periodontogramas", paciente), per.ListarPeriodontogramas)
 	app.Get(base+"/:eid", autenticado, clinico, auditar(m, models.AccionConsulta, "periodontograma", paciente, middleware.EntidadDeRuta("eid")), per.ObtenerPeriodontograma)
 	app.Post(base, autenticado, clinico, auditar(m, models.AccionCreacion, "periodontograma", paciente), per.CrearPeriodontograma)
+}
+
+// registrarEvolucion declara las rutas de la evolución clínica (F2-4): el odontólogo y el asistente redactan notas y
+// consultan; solo el odontólogo firma, corrige con adendas y completa procedimientos.
+func registrarEvolucion(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	evo := m.Evolucion
+	paciente := middleware.PacienteDeRuta("id")
+	notas := "/api/pacientes/:id/notas"
+	procs := "/api/pacientes/:id/procedimientos-realizados"
+
+	app.Get(notas, autenticado, clinico, auditar(m, models.AccionConsulta, "notas", paciente), evo.ListarNotas)
+	app.Post(notas, autenticado, clinico, auditar(m, models.AccionCreacion, "nota", paciente), evo.CrearNota)
+	app.Put(notas+"/:nid", autenticado, clinico, auditar(m, models.AccionModificacion, "nota", paciente, middleware.EntidadDeRuta("nid")), evo.ActualizarNota)
+	app.Post(notas+"/:nid/firmar", autenticado, odontologo, auditar(m, models.AccionFirma, "nota", paciente, middleware.EntidadDeRuta("nid")), evo.FirmarNota)
+	app.Post("/api/pacientes/:id/adendas", autenticado, odontologo, auditar(m, models.AccionFirma, "adenda", paciente), evo.CrearAdenda)
+
+	app.Get(procs, autenticado, clinico, auditar(m, models.AccionConsulta, "procedimientos_realizados", paciente), evo.ListarProcedimientosRealizados)
+	app.Post(procs, autenticado, odontologo, auditar(m, models.AccionCreacion, "procedimiento_realizado", paciente), evo.IniciarProcedimiento)
+	app.Post(procs+"/:pid/completar", autenticado, odontologo, auditar(m, models.AccionModificacion, "procedimiento_realizado", paciente, middleware.EntidadDeRuta("pid")), evo.CompletarProcedimiento)
+	app.Post(procs+"/:pid/cancelar", autenticado, odontologo, auditar(m, models.AccionModificacion, "procedimiento_realizado", paciente, middleware.EntidadDeRuta("pid")), evo.CancelarProcedimiento)
 }

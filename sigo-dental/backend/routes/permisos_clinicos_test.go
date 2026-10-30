@@ -32,6 +32,16 @@ var permisosClinicos = []permisoRuta{
 	{"GET", "/api/pacientes/1/periodontogramas", rolesClinicos},
 	{"GET", "/api/pacientes/1/periodontogramas/1", rolesClinicos},
 	{"POST", "/api/pacientes/1/periodontogramas", rolesClinicos},
+	// F2-4: el asistente redacta notas pero no las firma ni completa procedimientos.
+	{"GET", "/api/pacientes/1/notas", rolesClinicos},
+	{"POST", "/api/pacientes/1/notas", rolesClinicos},
+	{"PUT", "/api/pacientes/1/notas/1", rolesClinicos},
+	{"POST", "/api/pacientes/1/notas/1/firmar", soloOdontologo},
+	{"POST", "/api/pacientes/1/adendas", soloOdontologo},
+	{"GET", "/api/pacientes/1/procedimientos-realizados", rolesClinicos},
+	{"POST", "/api/pacientes/1/procedimientos-realizados", soloOdontologo},
+	{"POST", "/api/pacientes/1/procedimientos-realizados/1/completar", soloOdontologo},
+	{"POST", "/api/pacientes/1/procedimientos-realizados/1/cancelar", soloOdontologo},
 	// F2-2: el odontólogo escribe el odontograma; el asistente solo lo consulta.
 	{"GET", "/api/pacientes/1/odontograma", rolesClinicos},
 	{"GET", "/api/pacientes/1/odontograma/historial", rolesClinicos},

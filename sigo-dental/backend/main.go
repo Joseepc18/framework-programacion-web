@@ -21,6 +21,7 @@ import (
 	"sigo-dental-backend/cache"
 	"sigo-dental-backend/config"
 	"sigo-dental-backend/controllers"
+	"sigo-dental-backend/firma"
 	"sigo-dental-backend/middleware"
 	"sigo-dental-backend/notificaciones"
 	"sigo-dental-backend/repository"
@@ -80,6 +81,9 @@ func main() {
 	saltosProxy, _ := strconv.Atoi(os.Getenv("PROXY_SALTOS"))
 	middleware.ConfigurarIPDeProxy(os.Getenv("PROXY_HEADER"), saltosProxy)
 
+	// Firma digital de notas, adendas, recetas y consentimientos (reautenticación con la contraseña).
+	firmaDigital := firma.NuevoServicio(repositorio)
+
 	manejadores := routes.Manejadores{
 		Health:      controllers.NuevoHealthController(repositorio, almacen),
 		Auth:        auth,
@@ -91,6 +95,7 @@ func main() {
 		Auditoria:   controllers.NuevoAuditoriaController(repositorio),
 		Odontograma: controllers.NuevoOdontogramaController(repositorio),
 		Periodonto:  controllers.NuevoPeriodontoController(repositorio),
+		Evolucion:   controllers.NuevoEvolucionController(repositorio, firmaDigital),
 		Auditor:     repositorio,
 		JWTSecret:   secretoJWT,
 	}

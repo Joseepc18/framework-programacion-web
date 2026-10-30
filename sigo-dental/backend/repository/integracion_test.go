@@ -77,6 +77,18 @@ func debeFallarComoInmutable(t *testing.T, tx pgx.Tx, descripcion, sentencia str
 	}
 }
 
+// intentar ejecuta la operación en un punto de guardado que se revierte, para comprobar un fallo sin abortar la transacción
+// de la prueba.
+func intentar(t *testing.T, tx pgx.Tx, operacion func(pg *PostgresRepository) error) error {
+	t.Helper()
+	punto, err := tx.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = punto.Rollback(context.Background()) }()
+	return operacion(&PostgresRepository{db: punto})
+}
+
 var contadorDocumentos int
 
 // pacienteDePrueba crea un paciente dentro de la transacción de la prueba y devuelve su ID y el del odontólogo de prueba.
@@ -202,4 +214,59 @@ func TestOdontogramaPermiteVerUnaVisitaAnterior(t *testing.T) {
 	if len(antes) != 1 || len(ahora) != 0 || len(vigente) != 0 {
 		t.Errorf("hace 5 días = %d, hoy = %d, vigentes = %d; se esperaban 1, 0 y 0", len(antes), len(ahora), len(vigente))
 	}
+}
+
+// RN-01: un procedimiento realizado no se borra ni se cambia, y una nota firmada no se modifica, ni desde la base.
+func TestEvolucionProtegeProcedimientosRealizadosYNotasFirmadas(t *testing.T) {
+	pg, tx := repoTransaccional(t)
+	ctx := context.Background()
+	pacienteID, usuarioID := pacienteDePrueba(t, tx)
+	var profesionalID, catalogoID int
+	if err := tx.QueryRow(ctx, `SELECT id FROM profesionales WHERE usuario_id = $1`, usuarioID).Scan(&profesionalID); err != nil {
+		t.Skipf("falta el profesional de prueba: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT id FROM procedimientos WHERE activo ORDER BY id LIMIT 1`).Scan(&catalogoID); err != nil {
+		t.Skipf("falta el catálogo de prueba: %v", err)
+	}
+
+	pieza := 16
+	id, err := pg.IniciarProcedimiento(ctx, models.NuevoProcedimientoRealizado{PacienteID: pacienteID, ProcedimientoID: catalogoID, Pieza: &pieza, Superficie: "oclusal"}, profesionalID, usuarioID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.CambiarEstadoProcedimiento(ctx, pacienteID, id, models.ProcRealizado); err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.CambiarEstadoProcedimiento(ctx, pacienteID, id, models.ProcCancelado); !errors.Is(err, models.ErrProcedimientoNoEnCurso) {
+		t.Errorf("cancelar uno realizado: error = %v", err)
+	}
+	debeFallarComoInmutable(t, tx, "DELETE de un procedimiento realizado", `DELETE FROM procedimientos_realizados WHERE id = $1`, id)
+	debeFallarComoInmutable(t, tx, "UPDATE de un procedimiento realizado", `UPDATE procedimientos_realizados SET notas = 'otra cosa' WHERE id = $1`, id)
+
+	notaID, err := pg.CrearNota(ctx, models.Nota{PacienteID: pacienteID, ProfesionalID: profesionalID, AutorID: usuarioID,
+		Subjetivo: "s", Objetivo: "o", Evaluacion: "e", Plan: "p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.ActualizarNota(ctx, pacienteID, notaID, models.Nota{Subjetivo: "s2", Objetivo: "o2", Evaluacion: "e2", Plan: "p2"}); err != nil {
+		t.Fatalf("una nota sin firmar se edita: %v", err)
+	}
+	nota, _ := pg.ObtenerNota(ctx, pacienteID, notaID)
+	firmaNota := models.Firma{Entidad: models.FirmaNota, EntidadID: notaID, UsuarioID: usuarioID, ProfesionalID: profesionalID,
+		NombreFirmante: "X", RegistroProfesional: "R", HuellaSHA256: models.Huella(models.ContenidoCanonicoNota(nota.Nota)), ContenidoCanonico: models.ContenidoCanonicoNota(nota.Nota)}
+	if _, err := pg.GuardarFirma(ctx, firmaNota); err != nil {
+		t.Fatal(err)
+	}
+	err = intentar(t, tx, func(p *PostgresRepository) error { _, err := p.GuardarFirma(ctx, firmaNota); return err })
+	if !errors.Is(err, models.ErrDuplicado) {
+		t.Errorf("firmar dos veces: error = %v", err)
+	}
+	err = intentar(t, tx, func(p *PostgresRepository) error {
+		return p.ActualizarNota(ctx, pacienteID, notaID, models.Nota{Subjetivo: "s3", Objetivo: "o3", Evaluacion: "e3", Plan: "p3"})
+	})
+	if !errors.Is(err, models.ErrInmutable) {
+		t.Errorf("editar una nota firmada: error = %v, se esperaba ErrInmutable", err)
+	}
+	debeFallarComoInmutable(t, tx, "DELETE de una nota", `DELETE FROM notas_clinicas WHERE id = $1`, notaID)
+	debeFallarComoInmutable(t, tx, "UPDATE de la firma", `UPDATE firmas SET huella_sha256 = repeat('0', 64) WHERE entidad = 'nota'`)
 }
