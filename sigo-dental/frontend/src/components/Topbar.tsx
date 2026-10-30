@@ -35,11 +35,11 @@ const Topbar = ({ toggleSidebar, isMenuOpen }: TopbarProps) => {
           <button
             type="button"
             onClick={cerrarSesion}
+            aria-label="Cerrar sesión"
             className="inline-flex min-h-11 items-center gap-2 rounded-control border border-chip-neutro-borde bg-chip-neutro-fondo px-4 text-cuerpo font-medium text-texto transition hover:bg-item-activo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
           >
             <LogOut className="size-4" aria-hidden="true" />
             <span className="hidden sm:inline">Cerrar sesión</span>
-            <span className="sr-only sm:hidden">Cerrar sesión</span>
           </button>
         </div>
       )}
