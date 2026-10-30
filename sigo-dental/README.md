@@ -6,7 +6,7 @@ Proyecto de la materia Framework de Programación Web (UPSE). Se construye a par
 
 ## Estado
 
-En construcción: existe el esqueleto del backend (`backend/`) con el endpoint `GET /api/health`; el frontend aún no. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
+En construcción: existe el esqueleto del backend (`backend/`) con el endpoint `GET /api/health` y el modelo de datos inicial de usuarios y roles; el frontend aún no. El proyecto se construye por etapas; cada etapa queda desplegada y funcionando antes de empezar la siguiente.
 
 ## Alcance
 
@@ -45,6 +45,22 @@ curl http://localhost:3001/api/health
 Responde `200` con `status: ok`, `200` con `status: degraded` si Redis no responde, o `503` si PostgreSQL no responde.
 
 Para levantar también la API en contenedor: `docker compose up --build`.
+
+#### Base de datos
+
+PostgreSQL ejecuta los scripts de `backend/database/` en orden alfabético, **solo la primera vez que se crea el volumen**:
+
+- `001_usuarios_roles.sql`: tablas `roles` (con los cinco roles) y `usuarios`.
+- `900_datos_prueba.sql`: un usuario por rol con contraseña bcrypt, solo para desarrollo. Las credenciales de prueba están en ese archivo.
+
+Para aplicar un script nuevo en local, o recrear la base desde cero (borra sus datos):
+
+```bash
+docker compose down -v
+docker compose up -d postgres redis
+```
+
+En Neon se aplican a mano los scripts `0xx` (por ejemplo con `psql "$DATABASE_URL" -f database/001_usuarios_roles.sql`); los `9xx` son datos de prueba y no se cargan.
 
 ### Frontend
 

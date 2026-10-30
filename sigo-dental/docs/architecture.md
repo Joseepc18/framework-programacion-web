@@ -19,8 +19,10 @@ Capas del backend (`backend/`), tomadas de la Práctica 03: `routes` → `contro
 - **Etapas verticales desplegables.** El documento de requerimientos plantea 12 sprints; se avanza por módulos completos (base, pacientes, agenda, odontograma, presupuestos y caja) para tener siempre algo funcionando en producción.
 - **Integraciones externas detrás de interfaces (por confirmar).** Facturación fiscal, mensajería y pagos se simulan en esta fase; cambiar a un servicio real no debe tocar el resto del sistema.
 
+- **Migraciones como SQL numerado y plano.** Los scripts de `backend/database/` se numeran (`001_...`) y PostgreSQL los ejecuta en orden al crear el volumen, igual que en la Práctica 03. No añade dependencias y los mismos archivos se aplican a mano en Neon. Los datos de prueba llevan prefijo `9xx`, así quedan siempre al final y se distinguen de las migraciones que sí van a producción. Limitación: no hay control automático de qué se aplicó; si duele, se pasa a una herramienta como goose o golang-migrate reutilizando los mismos archivos.
+- **Roles en una tabla, un rol por usuario.** `roles` guarda los cinco roles del documento con un `codigo` estable (`admin_ti`, `recepcionista`, `odontologo`, `asistente`, `auditor`) y `usuarios.rol_id` apunta a ella. Las contraseñas se guardan solo como hash bcrypt en `usuarios.password_hash`. Los permisos por rol se definen con el RBAC (login y JWT).
+
 ## Pendiente de decidir
 
-- TODO: modelo de datos y migraciones.
 - TODO: estrategia de MFA y de auditoría inmutable (RNF-05 y RNF-06).
 - TODO: país y normativa aplicables.
