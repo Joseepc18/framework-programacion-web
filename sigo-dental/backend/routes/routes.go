@@ -11,9 +11,10 @@ import (
 
 // Manejadores agrupa los controladores ya construidos con sus dependencias inyectadas.
 type Manejadores struct {
-	Health   *controllers.HealthController
-	Auth     *controllers.AuthController
-	Catalogo *controllers.CatalogoController
+	Health    *controllers.HealthController
+	Auth      *controllers.AuthController
+	Catalogo  *controllers.CatalogoController
+	Pacientes *controllers.PacientesController
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
 	JWTSecret []byte
 }
@@ -45,6 +46,23 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	}
 
 	registrarCatalogo(app, m, autenticado)
+	registrarPacientes(app, m, autenticado)
+}
+
+// registrarPacientes declara las rutas de pacientes: la recepción registra y modifica la ficha,
+// el odontólogo y el asistente editan la anamnesis, y los tres consultan. El auditor no accede
+// a datos clínicos (menor privilegio).
+func registrarPacientes(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	consulta := middleware.RequireRoles(models.RolRecepcionista, models.RolOdontologo, models.RolAsistente)
+	recepcion := middleware.RequireRoles(models.RolRecepcionista)
+	clinico := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	pac := m.Pacientes
+
+	app.Get("/api/pacientes", autenticado, consulta, pac.ListarPacientes)
+	app.Get("/api/pacientes/:id", autenticado, consulta, pac.ObtenerPaciente)
+	app.Post("/api/pacientes", autenticado, recepcion, pac.CrearPaciente)
+	app.Put("/api/pacientes/:id", autenticado, recepcion, pac.ActualizarPaciente)
+	app.Put("/api/pacientes/:id/anamnesis", autenticado, clinico, pac.ActualizarAnamnesis)
 }
 
 // registrarCatalogo declara las rutas del catálogo médico: cualquier cuenta con sesión consulta

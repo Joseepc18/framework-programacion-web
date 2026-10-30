@@ -53,6 +53,7 @@ func main() {
 		Health:    controllers.NuevoHealthController(repositorio, almacen),
 		Auth:      auth,
 		Catalogo:  controllers.NuevoCatalogoController(repositorio),
+		Pacientes: controllers.NuevoPacientesController(repositorio),
 		JWTSecret: secretoJWT,
 	}
 

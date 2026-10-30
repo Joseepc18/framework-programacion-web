@@ -24,6 +24,7 @@ func appDePrueba(t *testing.T) *fiber.App {
 		Health:    controllers.NuevoHealthController(nil, nil),
 		Auth:      auth,
 		Catalogo:  controllers.NuevoCatalogoController(nil),
+		Pacientes: controllers.NuevoPacientesController(nil),
 		JWTSecret: secretoPrueba,
 	})
 	return app
@@ -126,6 +127,52 @@ func TestCatalogoSoloLoModificaElAdminTI(t *testing.T) {
 		}
 	}
 	for _, ruta := range lecturas {
+		resp, err := app.Test(httptest.NewRequest("GET", ruta, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != fiber.StatusUnauthorized {
+			t.Errorf("GET %s sin token: estado = %d, se esperaba 401", ruta, resp.StatusCode)
+		}
+	}
+}
+
+// Cada rol solo llega a lo que le corresponde en pacientes; el resto recibe 403 antes del controlador.
+func TestPermisosDePacientes(t *testing.T) {
+	app := appDePrueba(t)
+	prohibidos := []struct{ rol, metodo, ruta string }{
+		{models.RolAuditor, "GET", "/api/pacientes"},
+		{models.RolAdminTI, "GET", "/api/pacientes"},
+		{models.RolAuditor, "GET", "/api/pacientes/1"},
+		{models.RolAdminTI, "GET", "/api/pacientes/1"},
+		{models.RolOdontologo, "POST", "/api/pacientes"},
+		{models.RolAsistente, "POST", "/api/pacientes"},
+		{models.RolAuditor, "POST", "/api/pacientes"},
+		{models.RolOdontologo, "PUT", "/api/pacientes/1"},
+		{models.RolAsistente, "PUT", "/api/pacientes/1"},
+		{models.RolRecepcionista, "PUT", "/api/pacientes/1/anamnesis"},
+		{models.RolAuditor, "PUT", "/api/pacientes/1/anamnesis"},
+		{models.RolAdminTI, "PUT", "/api/pacientes/1/anamnesis"},
+	}
+	for _, p := range prohibidos {
+		t.Run(p.rol+" "+p.metodo+" "+p.ruta, func(t *testing.T) {
+			token, err := middleware.GenerarToken(secretoPrueba, 1, p.rol+"@sigo-dental.test", p.rol)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(p.metodo, p.ruta, nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != fiber.StatusForbidden {
+				t.Errorf("estado = %d, se esperaba 403", resp.StatusCode)
+			}
+		})
+	}
+
+	for _, ruta := range []string{"/api/pacientes", "/api/pacientes/1"} {
 		resp, err := app.Test(httptest.NewRequest("GET", ruta, nil))
 		if err != nil {
 			t.Fatal(err)
