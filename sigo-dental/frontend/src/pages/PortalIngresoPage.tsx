@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import BotonInstalar from '../components/BotonInstalar';
 import { Aviso, Boton, Campo } from '../components/ui';
 import { useAuth } from '../context/useAuth';
 import { useAccion } from '../hooks/useAccion';
@@ -53,6 +54,7 @@ const PortalIngresoPage = () => {
             )}
           </div>
         </form>
+        <BotonInstalar className="mt-4 w-full" />
         <p className="mt-6 text-etiqueta text-texto-suave">¿Eres parte del personal de la clínica? <Link className="text-acento underline" to="/login">Inicia sesión aquí</Link>.</p>
       </div>
     </main>

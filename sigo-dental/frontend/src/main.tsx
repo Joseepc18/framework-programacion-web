@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import './pwa/instalacion';
 import App from './App';
 
 // Aplicación instalable (portal del paciente): el service worker solo se registra en la versión de producción, para no

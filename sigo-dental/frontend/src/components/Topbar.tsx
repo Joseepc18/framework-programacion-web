@@ -1,6 +1,7 @@
 import { LogOut, Menu } from 'lucide-react';
 import { ETIQUETA_ROL } from '../config/permisos';
 import { useAuth } from '../context/useAuth';
+import BotonInstalar from './BotonInstalar';
 
 interface TopbarProps {
   toggleSidebar: () => void;
@@ -32,6 +33,7 @@ const Topbar = ({ toggleSidebar, isMenuOpen }: TopbarProps) => {
             <p className="hidden truncate text-etiqueta text-texto-suave md:block">{usuario.email}</p>
             <p className="truncate text-etiqueta font-medium text-texto">{ETIQUETA_ROL[usuario.rol]}</p>
           </div>
+          <BotonInstalar />
           <button
             type="button"
             onClick={cerrarSesion}
