@@ -1,23 +1,132 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+/* Fuentes autoalojadas (solo subconjunto latino, que cubre el español) con los pesos de docs/diseno.md. */
+@import "@fontsource/sora/latin-400.css";
+@import "@fontsource/sora/latin-500.css";
+@import "@fontsource/sora/latin-600.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
 
-  --color-clinica-50: #ecfeff;
-  --color-clinica-100: #cffafe;
-  --color-clinica-200: #a5f3fc;
-  --color-clinica-500: #06b6d4;
-  --color-clinica-600: #0891b2;
-  --color-clinica-700: #0e7490;
-  --color-clinica-800: #155e75;
-  --color-clinica-900: #164e63;
+/* Tokens de la dirección visual Aurora (docs/diseno.md). Los componentes los consumen; no llevan colores propios. */
+@theme {
+  --font-sans: "Sora", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  --text-pagina: 30px;
+  --text-pagina--line-height: 1.25;
+  --text-seccion: 18px;
+  --text-seccion--line-height: 1.4;
+  --text-cuerpo: 15px;
+  --text-cuerpo--line-height: 1.6;
+  --text-etiqueta: 13px;
+  --text-etiqueta--line-height: 1.4;
+
+  --radius-tarjeta: 20px;
+  --radius-control: 14px;
+
+  --color-fondo: #070b16;
+  --color-panel-solido: #10162a;
+  --color-vidrio: rgba(16, 22, 40, 0.72);
+  --color-vidrio-denso: rgba(16, 22, 40, 0.9);
+  --color-vidrio-borde: rgba(255, 255, 255, 0.1);
+  --blur-vidrio: 10px;
+
+  --color-texto: #f5f7ff;
+  --color-texto-suave: rgba(245, 247, 255, 0.72);
+
+  --color-acento: #2dd4bf;
+  --color-sobre-acento: #04201c;
+
+  --color-item-activo: rgba(255, 255, 255, 0.14);
+  --color-item-activo-borde: rgba(255, 255, 255, 0.24);
+
+  --color-chip-neutro-fondo: rgba(255, 255, 255, 0.08);
+  --color-chip-neutro-borde: rgba(255, 255, 255, 0.22);
+  --color-chip-neutro-texto: rgba(245, 247, 255, 0.88);
+  --color-chip-acento-fondo: rgba(45, 212, 191, 0.2);
+  --color-chip-acento-borde: rgba(45, 212, 191, 0.6);
+  --color-chip-acento-texto: #99f6e4;
+  --color-chip-alerta-fondo: rgba(251, 113, 133, 0.2);
+  --color-chip-alerta-borde: rgba(251, 113, 133, 0.55);
+  --color-chip-alerta-texto: #ffd1d8;
+  --color-alerta-valor: #fda4af;
+
+  --color-mancha-turquesa: #14b8a6;
+  --color-mancha-violeta: #7c3aed;
 }
 
 @layer base {
   body {
-    background-color: var(--color-slate-50);
-    color: var(--color-slate-900);
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
     font-family: var(--font-sans);
+    font-size: var(--text-cuerpo);
+    line-height: var(--text-cuerpo--line-height);
+  }
+
+  /* Las manchas de luz van fijas y detrás del contenido (z-index negativo sobre el fondo del lienzo). */
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+
+  body::before {
+    top: -180px;
+    left: -160px;
+    width: 540px;
+    height: 540px;
+    background-color: var(--color-mancha-turquesa);
+    opacity: 0.3;
+    filter: blur(120px);
+  }
+
+  body::after {
+    top: 28%;
+    right: -220px;
+    width: 580px;
+    height: 580px;
+    background-color: var(--color-mancha-violeta);
+    opacity: 0.28;
+    filter: blur(130px);
+  }
+}
+
+@layer components {
+  /* Panel de vidrio: casi opaco, con desenfoque suave. `.vidrio-denso` es para tablas y listas largas. */
+  .vidrio,
+  .vidrio-denso {
+    border: 1px solid var(--color-vidrio-borde);
+    -webkit-backdrop-filter: blur(var(--blur-vidrio)) saturate(110%);
+    backdrop-filter: blur(var(--blur-vidrio)) saturate(110%);
+  }
+
+  .vidrio {
+    background-color: var(--color-vidrio);
+  }
+
+  .vidrio-denso {
+    background-color: var(--color-vidrio-denso);
+  }
+}
+
+/* Respaldo obligatorio: sin `backdrop-filter`, o con la preferencia de menos transparencia, el panel es sólido. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidrio,
+  .vidrio-denso {
+    background-color: var(--color-panel-solido);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .vidrio,
+  .vidrio-denso {
+    background-color: var(--color-panel-solido);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 

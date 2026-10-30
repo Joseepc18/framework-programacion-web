@@ -90,7 +90,7 @@ npm run lint
 
 El servidor de desarrollo usa siempre el puerto 5173 (si está ocupado, falla en lugar de cambiar de puerto), porque es el origen que admite el CORS del backend por defecto. Para probar desde otro equipo de la red, como una tablet, hay que agregar ese origen a `CORS_ALLOWED_ORIGINS` en el `.env` del backend.
 
-El menú tiene dos páginas: Inicio y Estado del sistema (`/estado`), que consulta `GET /api/health` y muestra el estado de PostgreSQL y Redis. La barra lateral es fija desde 768 px de ancho (se puede colapsar a solo iconos) y es un cajón con botón de menú en pantallas más angostas, para cumplir el RNF-07 (escritorio, laptop y tablets de 10,5 pulgadas o más). `vercel.json` redirige todas las rutas a `index.html` para poder recargar páginas del router en Vercel.
+El menú tiene dos páginas: Inicio y Estado del sistema (`/estado`), que consulta `GET /api/health` y muestra el estado de PostgreSQL y Redis. La barra lateral es fija desde 768 px de ancho (se puede colapsar a solo iconos) y es un cajón con botón de menú en pantallas más angostas, para cumplir el RNF-07 (escritorio, laptop y tablets de 10,5 pulgadas o más). La interfaz sigue la dirección visual Aurora ([docs/diseno.md](docs/diseno.md)): tema oscuro con paneles de vidrio, un solo acento turquesa y las fuentes Sora y JetBrains Mono, que se sirven desde el propio proyecto (paquetes `@fontsource`). Los colores, radios y tipografías son tokens del bloque `@theme` de `frontend/src/index.css`. `vercel.json` redirige todas las rutas a `index.html` para poder recargar páginas del router en Vercel.
 
 ## Documentación
 
