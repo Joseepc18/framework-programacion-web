@@ -52,6 +52,7 @@ func main() {
 	manejadores := routes.Manejadores{
 		Health:    controllers.NuevoHealthController(repositorio, almacen),
 		Auth:      auth,
+		Catalogo:  controllers.NuevoCatalogoController(repositorio),
 		JWTSecret: secretoJWT,
 	}
 

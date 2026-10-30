@@ -11,8 +11,9 @@ import (
 
 // Manejadores agrupa los controladores ya construidos con sus dependencias inyectadas.
 type Manejadores struct {
-	Health *controllers.HealthController
-	Auth   *controllers.AuthController
+	Health   *controllers.HealthController
+	Auth     *controllers.AuthController
+	Catalogo *controllers.CatalogoController
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
 	JWTSecret []byte
 }
@@ -42,4 +43,33 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 			return c.JSON(fiber.Map{"acceso": "permitido", "rol": c.Locals("rol")})
 		})
 	}
+
+	registrarCatalogo(app, m, autenticado)
+}
+
+// registrarCatalogo declara las rutas del catálogo médico: cualquier cuenta con sesión consulta
+// (las listas alimentan los selectores de los demás módulos) y solo el administrador TI modifica.
+func registrarCatalogo(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	admin := middleware.RequireRoles(models.RolAdminTI)
+	cat := m.Catalogo
+
+	app.Get("/api/catalogo/:recurso", autenticado, cat.ListarSimples)
+	app.Post("/api/catalogo/:recurso", autenticado, admin, cat.CrearSimple)
+	app.Put("/api/catalogo/:recurso/:id", autenticado, admin, cat.ActualizarSimple)
+
+	app.Get("/api/sillones", autenticado, cat.ListarSillones)
+	app.Post("/api/sillones", autenticado, admin, cat.CrearSillon)
+	app.Put("/api/sillones/:id", autenticado, admin, cat.ActualizarSillon)
+
+	app.Get("/api/profesionales", autenticado, cat.ListarProfesionales)
+	app.Get("/api/profesionales/candidatos", autenticado, admin, cat.ListarUsuariosOdontologos)
+	app.Post("/api/profesionales", autenticado, admin, cat.CrearProfesional)
+	app.Put("/api/profesionales/:id", autenticado, admin, cat.ActualizarProfesional)
+
+	app.Get("/api/procedimientos", autenticado, cat.ListarProcedimientos)
+	app.Post("/api/procedimientos", autenticado, admin, cat.CrearProcedimiento)
+	app.Put("/api/procedimientos/:id", autenticado, admin, cat.ActualizarProcedimiento)
+
+	app.Get("/api/parametros", autenticado, cat.ListarParametros)
+	app.Put("/api/parametros/:clave", autenticado, admin, cat.ActualizarParametro)
 }
