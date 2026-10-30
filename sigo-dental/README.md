@@ -96,3 +96,4 @@ El menú tiene dos páginas: Inicio y Estado del sistema (`/estado`), que consul
 
 - Arquitectura: [docs/architecture.md](docs/architecture.md)
 - Dirección visual: [docs/diseno.md](docs/diseno.md)
+- Plan de implementación por fases: [docs/plan/](docs/plan/README.md)
