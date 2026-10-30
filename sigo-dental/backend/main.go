@@ -72,8 +72,11 @@ func main() {
 	avisos := notificaciones.NuevoServicio(repositorio, notificador, secretoJWT, urlFrontend).ConCodigos(repositorio)
 
 	// Archivos del paciente (F2-1): disco en desarrollo, S3 en producción (ALMACEN_ARCHIVOS).
-	almacenArchivos, err := almacenamiento.NuevoDesdeEntorno()
-	if err != nil {
+	// "postgres" guarda el contenido en la base de datos (sin disco ni S3); el resto lo resuelve NuevoDesdeEntorno.
+	var almacenArchivos almacenamiento.AlmacenArchivos
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("ALMACEN_ARCHIVOS")), "postgres") {
+		almacenArchivos = almacenamiento.NuevoPostgres(pool)
+	} else if almacenArchivos, err = almacenamiento.NuevoDesdeEntorno(); err != nil {
 		log.Fatal(err)
 	}
 	archivos := almacenamiento.NuevoServicio(almacenArchivos, repositorio)

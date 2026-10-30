@@ -74,5 +74,5 @@ func NuevoDesdeEntorno() (AlmacenArchivos, error) {
 		}
 		return NuevoS3(endpoint, bucket, acceso, secreto, os.Getenv("S3_REGION"), !strings.EqualFold(os.Getenv("S3_USE_SSL"), "false"))
 	}
-	return nil, fmt.Errorf("ALMACEN_ARCHIVOS %q no es válido: usa disco o s3", os.Getenv("ALMACEN_ARCHIVOS"))
+	return nil, fmt.Errorf("ALMACEN_ARCHIVOS %q no es válido: usa disco, s3 o postgres", os.Getenv("ALMACEN_ARCHIVOS"))
 }
