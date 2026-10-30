@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sigo-dental-db
+    # Las credenciales se leen del archivo .env (ver .env.example).
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      # Persistencia de los datos entre reinicios del contenedor.
+      - sigo-dental-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Caché en memoria para las consultas de lectura recurrentes.
+  # El backend puede correr en la máquina (go run .) y conectarse a PostgreSQL y a Redis
+  # con las variables DB_* y REDIS_ADDR del archivo .env, o como servicio de este compose.
+  redis:
+    image: redis:alpine
+    container_name: sigo-dental-redis
+    ports:
+      # Puerto de Redis en la máquina local.
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      # Comprueba que Redis responde antes de dar el servicio por listo.
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # API en Go. Se construye con el Dockerfile del backend y espera a que
+  # PostgreSQL y Redis estén listos antes de arrancar.
+  backend:
+    build: .
+    container_name: sigo-dental-backend
+    environment:
+      # Dentro de la red de Docker cada servicio se llama por su nombre, no por localhost.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_ADDR: redis:6379
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      # API en http://localhost:3001 (el 3000 lo ocupa otro proyecto).
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  sigo-dental-data:
