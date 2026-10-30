@@ -15,6 +15,9 @@ services:
     volumes:
       # Persistencia de los datos entre reinicios del contenedor.
       - sigo-dental-data:/var/lib/postgresql/data
+      # Migraciones y datos de prueba: PostgreSQL ejecuta los .sql en orden alfabético
+      # solo la primera vez que se crea el volumen (ver database/).
+      - ./database:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
