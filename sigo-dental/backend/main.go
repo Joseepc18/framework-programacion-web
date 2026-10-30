@@ -100,6 +100,7 @@ func main() {
 		Periodonto:      controllers.NuevoPeriodontoController(repositorio),
 		Evolucion:       controllers.NuevoEvolucionController(repositorio, firmaDigital),
 		Consentimientos: controllers.NuevoConsentimientosController(repositorio, codigosOTP, avisos, archivos),
+		Recetas:         controllers.NuevoRecetasController(repositorio, firmaDigital),
 		Auditor:         repositorio,
 		JWTSecret:       secretoJWT,
 	}

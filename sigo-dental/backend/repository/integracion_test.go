@@ -341,3 +341,52 @@ func TestProcedimientoConConsentimientoObligatorio(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// F2-6: una receta firmada no se edita ni desde la base; anularla deja registro y puede crear la que la reemplaza.
+func TestRecetaFirmadaNoSeEditaYSeAnulaConRegistro(t *testing.T) {
+	pg, tx := repoTransaccional(t)
+	ctx := context.Background()
+	pacienteID, usuarioID := pacienteDePrueba(t, tx)
+	var profesionalID int
+	if err := tx.QueryRow(ctx, `SELECT id FROM profesionales WHERE usuario_id = $1`, usuarioID).Scan(&profesionalID); err != nil {
+		t.Skipf("falta el profesional de prueba: %v", err)
+	}
+	meds := []models.Medicamento{{Nombre: "Amoxicilina 500 mg", Dosis: "1 cápsula", Frecuencia: "cada 8 horas", Duracion: "7 días"}}
+	id, err := pg.CrearReceta(ctx, models.Receta{PacienteID: pacienteID, ProfesionalID: profesionalID, Medicamentos: meds}, usuarioID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.ActualizarReceta(ctx, pacienteID, id, "tomar con alimentos", meds); err != nil {
+		t.Fatalf("un borrador se edita: %v", err)
+	}
+	receta, _ := pg.ObtenerReceta(ctx, pacienteID, id)
+	if _, err := pg.GuardarFirma(ctx, models.Firma{Entidad: models.FirmaReceta, EntidadID: id, UsuarioID: usuarioID, ProfesionalID: profesionalID,
+		NombreFirmante: "X", RegistroProfesional: "R", HuellaSHA256: models.Huella(models.ContenidoCanonicoReceta(receta)), ContenidoCanonico: models.ContenidoCanonicoReceta(receta)}); err != nil {
+		t.Fatal(err)
+	}
+	err = intentar(t, tx, func(p *PostgresRepository) error { return p.ActualizarReceta(ctx, pacienteID, id, "otra", meds) })
+	if !errors.Is(err, models.ErrInmutable) {
+		t.Errorf("editar una receta firmada: error = %v, se esperaba ErrInmutable", err)
+	}
+	debeFallarComoInmutable(t, tx, "cambiar un medicamento", `UPDATE receta_medicamentos SET dosis = '10 cápsulas' WHERE receta_id = $1`, id)
+	debeFallarComoInmutable(t, tx, "borrar la receta", `DELETE FROM recetas WHERE id = $1`, id)
+
+	nuevoID, err := pg.AnularReceta(ctx, pacienteID, id, "dosis equivocada", usuarioID, true)
+	if err != nil || nuevoID == 0 {
+		t.Fatalf("anular con reemplazo: id = %d, error = %v", nuevoID, err)
+	}
+	anulada, _ := pg.ObtenerReceta(ctx, pacienteID, id)
+	if anulada.Estado != models.RecetaAnulada || anulada.Anulacion == nil || anulada.Anulacion.Motivo != "dosis equivocada" {
+		t.Errorf("la anulación no quedó registrada: %+v", anulada.Anulacion)
+	}
+	if nueva, _ := pg.ObtenerReceta(ctx, pacienteID, nuevoID); nueva.Estado != models.RecetaBorrador || len(nueva.Medicamentos) != 1 || nueva.Numero == receta.Numero {
+		t.Errorf("la receta de reemplazo no es un borrador nuevo: %+v", nueva)
+	}
+	err = intentar(t, tx, func(p *PostgresRepository) error {
+		_, err := p.AnularReceta(ctx, pacienteID, id, "otra vez", usuarioID, false)
+		return err
+	})
+	if !errors.Is(err, models.ErrConflicto) {
+		t.Errorf("anular dos veces: error = %v, se esperaba ErrConflicto", err)
+	}
+}

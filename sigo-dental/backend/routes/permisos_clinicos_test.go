@@ -52,6 +52,15 @@ var permisosClinicos = []permisoRuta{
 	{"POST", "/api/pacientes/1/consentimientos/1/firmar", rolesClinicos},
 	{"POST", "/api/pacientes/1/consentimientos/1/revocar", soloOdontologo},
 	{"GET", "/api/pacientes/1/notificaciones", []string{models.RolOdontologo, models.RolAsistente, models.RolRecepcionista}},
+	// F2-6: solo el odontólogo emite, firma y anula recetas; el asistente las consulta.
+	{"GET", "/api/pacientes/1/recetas", rolesClinicos},
+	{"POST", "/api/pacientes/1/recetas", soloOdontologo},
+	{"POST", "/api/pacientes/1/recetas/verificar-alergias", soloOdontologo},
+	{"GET", "/api/pacientes/1/recetas/1", rolesClinicos},
+	{"PUT", "/api/pacientes/1/recetas/1", soloOdontologo},
+	{"POST", "/api/pacientes/1/recetas/1/firmar", soloOdontologo},
+	{"POST", "/api/pacientes/1/recetas/1/anular", soloOdontologo},
+	{"GET", "/api/pacientes/1/recetas/1/pdf", rolesClinicos},
 	// F2-2: el odontólogo escribe el odontograma; el asistente solo lo consulta.
 	{"GET", "/api/pacientes/1/odontograma", rolesClinicos},
 	{"GET", "/api/pacientes/1/odontograma/historial", rolesClinicos},

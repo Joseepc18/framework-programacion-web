@@ -25,6 +25,7 @@ type Manejadores struct {
 	Periodonto      *controllers.PeriodontoController
 	Evolucion       *controllers.EvolucionController
 	Consentimientos *controllers.ConsentimientosController
+	Recetas         *controllers.RecetasController
 	// Auditor guarda cada acceso a datos clínicos; si es nil las rutas funcionan sin registrarlos (solo pruebas).
 	Auditor middleware.Auditor
 	// JWTSecret es la clave con la que RequireAuth verifica los tokens.
@@ -66,6 +67,7 @@ func SetupRoutes(app *fiber.App, m Manejadores) {
 	registrarPeriodonto(app, m, autenticado)
 	registrarEvolucion(app, m, autenticado)
 	registrarConsentimientos(app, m, autenticado)
+	registrarRecetas(app, m, autenticado)
 }
 
 // registrarCitas declara las rutas de la agenda: la recepción agenda y reprograma; la recepción, el
@@ -246,4 +248,23 @@ func registrarConsentimientos(app *fiber.App, m Manejadores, autenticado fiber.H
 	// Bitácora de códigos enviados (con el adaptador simulado el código es visible para probar).
 	app.Get("/api/pacientes/:id/notificaciones", autenticado, middleware.RequireRoles(models.RolOdontologo, models.RolAsistente, models.RolRecepcionista),
 		auditar(m, models.AccionConsulta, "notificaciones", paciente), con.ListarNotificaciones)
+}
+
+// registrarRecetas declara las rutas de recetas (F2-6): solo el odontólogo emite, firma y anula; el asistente consulta.
+func registrarRecetas(app *fiber.App, m Manejadores, autenticado fiber.Handler) {
+	lectura := middleware.RequireRoles(models.RolOdontologo, models.RolAsistente)
+	odontologo := middleware.RequireRoles(models.RolOdontologo)
+	rec := m.Recetas
+	paciente := middleware.PacienteDeRuta("id")
+	base := "/api/pacientes/:id/recetas"
+	entidad := middleware.EntidadDeRuta("rid")
+
+	app.Get(base, autenticado, lectura, auditar(m, models.AccionConsulta, "recetas", paciente), rec.ListarRecetas)
+	app.Post(base+"/verificar-alergias", autenticado, odontologo, rec.VerificarAlergias)
+	app.Post(base, autenticado, odontologo, auditar(m, models.AccionCreacion, "receta", paciente), rec.CrearReceta)
+	app.Get(base+"/:rid", autenticado, lectura, auditar(m, models.AccionConsulta, "receta", paciente, entidad), rec.ObtenerReceta)
+	app.Put(base+"/:rid", autenticado, odontologo, auditar(m, models.AccionModificacion, "receta", paciente, entidad), rec.ActualizarReceta)
+	app.Post(base+"/:rid/firmar", autenticado, odontologo, auditar(m, models.AccionFirma, "receta", paciente, entidad), rec.FirmarReceta)
+	app.Post(base+"/:rid/anular", autenticado, odontologo, auditar(m, models.AccionAnulacion, "receta", paciente, entidad), rec.AnularReceta)
+	app.Get(base+"/:rid/pdf", autenticado, lectura, auditar(m, models.AccionExportacion, "receta", paciente, entidad), rec.PDFReceta)
 }
